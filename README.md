@@ -188,9 +188,4 @@ Audio: no live streams or YouTube playlist links (list the video ids with `#play
 Treeview; images/PhotoImage; askdirectory returns the app's files dir. Subclassing built-in types (dict, list...) is not supported. Exception classes with their own methods/attributes are only partly supported. sqlite3 named parameters (`:name`) and row factories are not supported; `csv` dialects other than delimiter/quotechar/quoting are ignored. `requests` is a minimal built-in; **pip packages cannot be used** (there is no embedded CPython).
 
 ## Tested on a real device
-All features (version label and builtin switches, datareset and its confirmation dialog, audio, overlay permission, native file picker, dispose watcher and the runtime's dexing) were tested on a real phone, the author's own. Results may vary depending on your device's age, Android version and root status. Report anything odd with `tkdroid logs -e`.
-The log panel and `update --debug` / `revert` / `help --brief` were added after that testing: the generated code, the shell flow (with stubs) and the version-code patching were checked on a desktop, not yet on a phone.
-
-v3.1.0 (Notebook tabs, Menu, colorchooser, classes, generators, decorators, bytes, new libraries) was checked on a desktop with stubs and compared with CPython; none of it has been tried on a phone yet. sqlite3 and the Menu/Notebook/colorchooser look in particular are untested on a device.
-The small version label now reads `<app version>, Built With TkDroid <version>`.
-v3.1.2 (the About TkDroid link and page) has not been tried on a phone yet, including opening it from a dpooa floating window; the folder move on flash and the `update-all` package move are also untested on a device.
+As of v3.1.4 p4, all features (version label and builtin switches, datareset and its confirmation dialog, audio, overlay permission, native file picker, dispose watcher and the runtime's dexing) were tested on a real phone, the author's own. Results may vary depending on your device's age, Android version and root status. Report anything odd with `tkdroid logs -e`.
