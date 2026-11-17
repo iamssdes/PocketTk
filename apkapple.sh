@@ -20,8 +20,8 @@ OUT_DIR=/sdcard/Download/TkDroid
 VERSION="TkDroid v3.1.4 Patch 2"
 EDITION=full          # make_demo.py sets this to "demo" (TkDroid Demo), make_consumer.py to "consumer" (TkDroid Consumer)
 EDITION_TAG=""; [ "$EDITION" = demo ] && EDITION_TAG=" Demo"; [ "$EDITION" = consumer ] && EDITION_TAG=" Consumer"
-PKG_PREFIX="tkdroid.palalgon."
-LEGACY_PKG_PREFIXES="tkdroid.molt. apple.app."      # packages of apps built before the name changed
+PKG_PREFIX="tkdroid.ssdes."
+LEGACY_PKG_PREFIXES="tkdroid.palalgon. tkdroid.molt. apple.app."      # packages of apps built before the name changed
 
 # legacy_suffix PKG -> the app name after an old prefix; fails when PKG is not on an old package
 legacy_suffix() {
@@ -154,10 +154,10 @@ TkDroid - turn a tkinter script into an Android APK   (command: tkdroid; old nam
   tkdroid check app.py        transpile only; show warnings and generated Java
   tkdroid install file.apk    install an APK (pm install -r)
   tkdroid update --id NAME [code.py] [--patch|--small|--medium|--large] [--debug]   rebuild + install over the old app (keeps its data)
-  tkdroid update --id NAME --new-pkg   move an app from an old package (tkdroid.molt.* / apple.app.*) to tkdroid.palalgon.* (what update-all does)
+  tkdroid update --id NAME --new-pkg   move an app from an old package (tkdroid.molt.* / apple.app.*) to tkdroid.ssdes.* (what update-all does)
   tkdroid revert --id NAME    restore the version saved by update --debug (normally automatic)
   tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large]   update every app with an id to this TkDroid version (N at a time)
-                               (apps still on an old package, tkdroid.molt.* or apple.app.*, are moved to tkdroid.palalgon.*: data copied, old app removed)
+                               (apps still on an old package, tkdroid.molt.* or apple.app.*, are moved to tkdroid.ssdes.*: data copied, old app removed)
   tkdroid ids                 app ids you created
   tkdroid delete --id NAME [-y]   uninstall the app (its data goes too) and remove the id
   tkdroid delete-uninstalled      remove the ids of apps that are no longer installed
@@ -184,7 +184,7 @@ update --debug:
   the previous version is installed back over it automatically (data kept, no uninstall).
 build:
   -n NAME     app label (default: file name)
-  -p PACKAGE  Android package id (default: tkdroid.palalgon.<name>)
+  -p PACKAGE  Android package id (default: tkdroid.ssdes.<name>)
   -o OUT      output path (default: /sdcard/Download/TkDroid/<name>.apk)
   -i          install after building
   -k          keep the work directory
@@ -620,7 +620,7 @@ cmd__logs() {
   fi
 }
 
-# pkg_for_base NAME -> package of the app built from NAME.py: tkdroid.palalgon.NAME, or an older package of that name when only that is installed
+# pkg_for_base NAME -> package of the app built from NAME.py: tkdroid.ssdes.NAME, or an older package of that name when only that is installed
 pkg_for_base() {
   _pn="${PKG_PREFIX}$1"
   as_root _has "$_pn" && { echo "$_pn"; return; }
@@ -917,7 +917,7 @@ cmd_update() {
   [ -n "$src" ] || src=$(sed -n 's/^src=//p' "$IDF")
   [ -f "$src" ] || die "source not found: $src - pass the file:  tkdroid update --id $id code.py"
   say "updating '$id' ($(sed -n 's/^pkg=//p' "$IDF"))"
-  # --new-pkg: an app still on an old package (tkdroid.molt.* / apple.app.*) is built and installed as tkdroid.palalgon.* instead
+  # --new-pkg: an app still on an old package (tkdroid.molt.* / apple.app.*) is built and installed as tkdroid.ssdes.* instead
   mig_old="" mig_new=""
   if [ "$newpkg" = 1 ] && [ "$debug" = 0 ]; then
     _op=$(sed -n 's/^pkg=//p' "$IDF")

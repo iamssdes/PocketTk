@@ -4,7 +4,7 @@ KernelSU module: turn a Python **tkinter** script into an installable Android AP
 (Python is transpiled to Java; there is no embedded CPython.)
 
 ## About this project
-Made by Palalgon & Claude. The code was written by AI (Claude, made by Anthropic), directed by Palalgon. It started as a fun idea. I do not take pride in this work as if it were mine: the AI did the work, I only had the idea and steered it.
+Made by SSDES & Claude. The code was written by AI (Claude, made by Anthropic), directed by SSDES. It started as a fun idea. I do not take pride in this work as if it were mine: the AI did the work, I only had the idea and steered it.
 
 ## Commands (run in Termux as a normal user, not tsu)
     tkdroid run app.py [--dispose] [--logs] [--debug] [--icon IMG] [--id NAME]   build + install + launch
@@ -12,7 +12,7 @@ Made by Palalgon & Claude. The code was written by AI (Claude, made by Anthropic
     tkdroid build app.py --aab [--id NAME] [--target-sdk N] [--keystore FILE [--ks-alias A]]   Android App Bundle for Google Play
     tkdroid update --id NAME [code.py] [--patch|--small|--medium|--large] [--debug]
     tkdroid revert --id NAME                  restore the version saved by update --debug (normally automatic)
-    tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large]   (also moves apple.app.* and tkdroid.molt.* apps to tkdroid.palalgon.*)
+    tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large]   (also moves apple.app.* and tkdroid.molt.* apps to tkdroid.ssdes.*)
     tkdroid ids
     tkdroid delete --id NAME [-y]            uninstall the app (its data goes too) and remove the id
     tkdroid delete-uninstalled                remove the ids of apps that are no longer installed
@@ -108,7 +108,7 @@ Untested on a real device and with the real aapt2 and bundletool; only the packi
     tkdroid update --id notes code.py -i # later: rebuild and install over the old app
     tkdroid update --id notes            # reuse the saved source path
     tkdroid ids                          # list your ids
-The id pins the package name (new apps get `tkdroid.palalgon.NAME`; apps built before that change keep their older `tkdroid.molt.NAME` or `apple.app.NAME` package until `update-all` moves them) and the signing key stays the same, and every build bumps the version code, so Android treats it as an update: the app's data (including `datasaving` state) is kept. Name and icon are remembered unless you pass new ones. Don't use `--dispose` with ids you want to keep updating.
+The id pins the package name (new apps get `tkdroid.ssdes.NAME`; apps built before that change keep their older `tkdroid.molt.NAME` or `apple.app.NAME` package until `update-all` moves them) and the signing key stays the same, and every build bumps the version code, so Android treats it as an update: the app's data (including `datasaving` state) is kept. Name and icon are remembered unless you pass new ones. Don't use `--dispose` with ids you want to keep updating.
 
 ## Updating all apps to a new TkDroid version
 An app contains the runtime it was built with, so installing a newer TkDroid does not change apps you already built. `tkdroid update-all` rebuilds every app that has an id from its saved source and installs it over the old one (data is kept, apps are not launched). Apps already built with the current TkDroid are skipped, as are apps that are no longer installed; `--force` rebuilds those anyway. The update kind flags work as in `update` (default `--patch`) and apply to all apps. One failing app does not stop the others; they are listed at the end. It is fast on purpose: the TkDroid runtime is compiled once (cached in `~/.tkdroid/rt`, rebuilt automatically when TkDroid or android.jar changes) and every app only compiles its own code; the first app builds alone, the rest are built `-j N` at a time (default: half the CPU cores, 1 to 3; `-j 1` builds one by one with live output). Apps whose source files share a file name are always built one at a time. The runtime sits in each APK as a second dex (`classes2.dex`). If the cache ever misbehaves, `APKAPPLE_NO_RTCACHE=1 apkapple update-all` builds the old way. If an app's source file moved, fix it with `tkdroid update --id NAME code.py`. Apps built without `--id` are not tracked and are not touched. `tkdroid ids` marks apps built with an older TkDroid.
@@ -153,7 +153,7 @@ TkDroid keeps its files here (they used to be named ApkApple / `.apple`):
 
 **Flashing this module moves everything over:** the old `~/.apple`, `/data/adb/apple`, `/sdcard/Download/ApkApple` and `/sdcard/ApkApple` become the new folders (the signing key included, so your apps keep updating), and the `src=` / `icon=` paths inside the app ids are rewritten to match. If a new folder already exists, only the files it lacks are copied. If Termux was not ready at flash time, the first `tkdroid` command moves `~/.apple` by itself. The old `/sdcard/ApkApple/...` locations are still searched for `android.jar` and `sdk`.
 
-**Package names:** new apps use `tkdroid.palalgon.NAME` (earlier versions used `tkdroid.molt.NAME` and, before that, `apple.app.NAME`). `tkdroid update-all` moves every app that is still on one of the older names to `tkdroid.palalgon.NAME` (even if it was already built with this version): it builds the app under the new package, copies the old app's saved data (`files`, `shared_prefs`, `databases`, so `datasaving` state survives) into it as root, then uninstalls the old one. If the data copy fails, the old app is kept and you are told. An id whose app is not installed just gets its package name changed in the record. Apps with a custom `-p` package are left alone. For one app: `tkdroid update --id NAME --new-pkg`.
+**Package names:** new apps use `tkdroid.ssdes.NAME` (earlier versions used `tkdroid.molt.NAME` and, before that, `apple.app.NAME`). `tkdroid update-all` moves every app that is still on one of the older names to `tkdroid.ssdes.NAME` (even if it was already built with this version): it builds the app under the new package, copies the old app's saved data (`files`, `shared_prefs`, `databases`, so `datasaving` state survives) into it as root, then uninstalls the old one. If the data copy fails, the old app is kept and you are told. An id whose app is not installed just gets its package name changed in the record. Apps with a custom `-p` package are left alone. For one app: `tkdroid update --id NAME --new-pkg`.
 
 ## About TkDroid page
 Every app has a small underlined **About TkDroid** link at the end of its version label (switch the label off with `#builtins: version-label: disable`). It opens a plain page inside the app that explains what TkDroid is, why it exists, how apps are made with it, who makes it, and the "Can I use it?" answer (yes, it is open source; the **Open the repo on GitHub** button opens https://github.com/iamssdes/TkDroid, set as `REPO_URL` in `rt/About.java`). Close it with the Close button or the back button. The page is `rt/About.java`, so its text is easy to edit.

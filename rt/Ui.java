@@ -1976,10 +1976,11 @@ public final class Ui {
                     tabBar.setOrientation(LinearLayout.HORIZONTAL);
                     tabBar.setBackgroundColor(nbBg);
                     hs.addView(tabBar, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                    outer.addView(hs, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    // the pages take all the room above; the tab strip sits at the bottom of the notebook, full width
                     LinearLayout pages = new LinearLayout(a);
                     pages.setOrientation(LinearLayout.VERTICAL);
-                    outer.addView(pages, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    outer.addView(pages, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+                    outer.addView(hs, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                     view = outer;
                     content = pages;
                     break;
@@ -2804,6 +2805,7 @@ public final class Ui {
             String side = optStr(o, "side", "top");
             String fill = optStr(o, "fill", "none");
             boolean expand = flag(o.get("expand"));
+            if (kind.equals("Notebook")) { fill = "both"; expand = true; }   // the tab strip is at the bottom of the screen, so the notebook fills it
             boolean sideH = side.equals("left") || side.equals("right");
             if (p.kids == 0 && p.content instanceof LinearLayout) {
                 p.horiz = sideH;

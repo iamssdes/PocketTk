@@ -93,7 +93,7 @@ public class About extends Activity {
                 + "under the app while you test a change.", 15, TEXT, false, 10);
 
         heading(page, "About the developer");
-        text(page, "TkDroid is made by Palalgon, a very indie developer. It is an independent project, made without a "
+        text(page, "TkDroid is made by SSDES, a very indie developer. It is an independent project, made without a "
                 + "company or a publisher behind it.", 15, TEXT, false, 6);
         text(page, "It started out as a tool called ApkApple and was renamed TkDroid. It is built to run entirely on a "
                 + "phone, for people who use KernelSU and Termux.", 15, TEXT, false, 10);

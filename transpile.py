@@ -2424,7 +2424,7 @@ def main(argv=None):
     g = sub.add_parser("gen")
     g.add_argument("script")
     g.add_argument("outdir")
-    g.add_argument("--pkg", default="tkdroid.palalgon")
+    g.add_argument("--pkg", default="tkdroid.ssdes")
     g.add_argument("--label", default="Apple App")
     g.add_argument("--audio-cache", default=os.path.join(os.path.expanduser("~"), ".tkdroid", "audio-cache"))
     g.add_argument("--no-assets", action="store_true", help="do not fetch/bundle #audio: tracks (apkapple check)")
