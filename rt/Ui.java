@@ -1996,6 +1996,9 @@ public final class Ui {
                     pages.setOrientation(LinearLayout.VERTICAL);
                     nbStrip = hs;
                     nbPagesBox = pages;
+                    hs.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                        public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) { nbEdgeToEdge(); }
+                    });
                     outer.addView(pages, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
                     outer.addView(hs, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                     view = outer;
@@ -2505,6 +2508,55 @@ public final class Ui {
             nbStyle();
         }
 
+        /**
+         * When this notebook is the whole main window (nothing else shares its screen), it goes edge to edge: no padding or
+         * margins around it, so the tab strip touches the left, right and bottom of the screen with no gaps, and the version
+         * label sits just above the strip. Runs after each layout; it only changes things that are not already zero.
+         */
+        void nbEdgeToEdge() {
+            try {
+                if (view == null || Ui.content == null) return;
+                List<ViewGroup> chain = new ArrayList<ViewGroup>();
+                View cur = view;
+                while (cur != Ui.content) {
+                    if (!(cur.getParent() instanceof ViewGroup)) return;             // not in the main window
+                    ViewGroup g = (ViewGroup) cur.getParent();
+                    for (int i = 0; i < g.getChildCount(); i++) {
+                        View sib = g.getChildAt(i);
+                        if (sib != cur && sib.getVisibility() != View.GONE) return;  // something else shares the screen
+                    }
+                    chain.add(g);
+                    cur = g;
+                }
+                boolean changed = false;
+                for (ViewGroup g : chain) {
+                    if (g.getPaddingLeft() != 0 || g.getPaddingTop() != 0 || g.getPaddingRight() != 0 || g.getPaddingBottom() != 0) {
+                        g.setPadding(0, 0, 0, 0);
+                        changed = true;
+                    }
+                }
+                for (View x = view; x != Ui.content && x != null; x = (x.getParent() instanceof View) ? (View) x.getParent() : null) {
+                    ViewGroup.LayoutParams lp = x.getLayoutParams();
+                    if (lp instanceof ViewGroup.MarginLayoutParams) {
+                        ViewGroup.MarginLayoutParams m = (ViewGroup.MarginLayoutParams) lp;
+                        if (m.leftMargin != 0 || m.topMargin != 0 || m.rightMargin != 0 || m.bottomMargin != 0) {
+                            m.setMargins(0, 0, 0, 0);
+                            x.setLayoutParams(m);
+                            changed = true;
+                        }
+                    }
+                }
+                if (!nbPadded) { nbPadded = true; nbPagesBox.setPadding(dp(12), dp(12), dp(12), dp(12)); changed = true; }
+                if (changed) return;                                                 // another layout pass is coming
+                int[] a = new int[2], b = new int[2];
+                nbStrip.getLocationOnScreen(a);
+                rootFrame.getLocationOnScreen(b);
+                liftVersionLabel(Math.max(0, (b[1] + rootFrame.getHeight()) - a[1]));   // just above the strip
+            } catch (Throwable ignored) { /* layout only */ }
+        }
+
+        boolean nbPadded;
+
         void nbStyle() {
             for (int i = 0; i < tabBar.getChildCount(); i++) {
                 LinearLayout cell = (LinearLayout) tabBar.getChildAt(i);
@@ -2823,16 +2875,6 @@ public final class Ui {
             String fill = optStr(o, "fill", "none");
             boolean expand = flag(o.get("expand"));
             if (kind.equals("Notebook")) { fill = "both"; expand = true; }   // the tab strip is at the bottom of the screen, so the notebook fills it
-            boolean nbRoot = kind.equals("Notebook") && p == root;
-            if (nbRoot) {                       // a notebook of the main window: edge to edge, tab strip at the very bottom of the screen
-                content.setPadding(0, 0, 0, 0);
-                nbPagesBox.setPadding(dp(12), dp(12), dp(12), dp(12));
-                o = new LinkedHashMap<String, Object>(o);
-                o.remove("padx"); o.remove("pady");
-                nbStrip.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-                    public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) { liftVersionLabel(b - t); }
-                });
-            }
             boolean sideH = side.equals("left") || side.equals("right");
             if (p.kids == 0 && p.content instanceof LinearLayout) {
                 p.horiz = sideH;

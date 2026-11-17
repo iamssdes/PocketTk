@@ -1,6 +1,6 @@
 id=apple
 name=TkDroid
-version=v3.1.4 Patch 3
-versionCode=3143
+version=v3.1.4 Patch 4
+versionCode=3144
 author=SSDES
 description=Turns tkinter Python scripts into installable Android APKs. In Termux: tkdroid run app.py

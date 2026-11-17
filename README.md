@@ -1,4 +1,4 @@
-# TkDroid v3.1.4 Patch 3
+# TkDroid v3.1.4 Patch 4
 
 KernelSU module: turn a Python **tkinter** script into an installable Android APK, from the Termux terminal.
 (Python is transpiled to Java; there is no embedded CPython.)
