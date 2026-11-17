@@ -17,7 +17,7 @@ else
   WORK="$HOME/.tkdroid/work"; KS_DIR="$HOME/.tkdroid"
 fi
 OUT_DIR=/sdcard/Download/TkDroid
-VERSION="TkDroid v3.1.4 Patch 2"
+VERSION="TkDroid v3.1.4 Patch 3"
 EDITION=full          # make_demo.py sets this to "demo" (TkDroid Demo), make_consumer.py to "consumer" (TkDroid Consumer)
 EDITION_TAG=""; [ "$EDITION" = demo ] && EDITION_TAG=" Demo"; [ "$EDITION" = consumer ] && EDITION_TAG=" Consumer"
 PKG_PREFIX="tkdroid.ssdes."

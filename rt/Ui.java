@@ -237,7 +237,20 @@ public final class Ui {
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
             lp.setMargins(0, 0, dp(grip != null ? 30 : 0), 0);   // left of the resize grip when there is one
             rootFrame.addView(t, lp);
+            versionView = t;
         } catch (Throwable ignored) { /* no label */ }
+    }
+
+    static TextView versionView;
+
+    /** A notebook's tab strip is at the bottom of the screen: the version label sits just above it, not on it. */
+    static void liftVersionLabel(int stripHeight) {
+        TextView t = versionView;
+        if (t == null || !(t.getLayoutParams() instanceof FrameLayout.LayoutParams)) return;
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) t.getLayoutParams();
+        if (lp.bottomMargin == stripHeight) return;
+        lp.bottomMargin = stripHeight;
+        t.setLayoutParams(lp);
     }
 
     /** The About TkDroid page (apple.rt.About). Works from overlay windows too. */
@@ -1950,6 +1963,8 @@ public final class Ui {
         int nextItem = 1;
         // Notebook (tabs)
         LinearLayout tabBar;
+        HorizontalScrollView nbStrip;      // the scrolling holder of the tab strip (at the bottom of the notebook)
+        LinearLayout nbPagesBox;
         final List<Wid> nbPages = new ArrayList<Wid>();
         final List<String> nbTitles = new ArrayList<String>();
         int nbSel = -1;
@@ -1979,6 +1994,8 @@ public final class Ui {
                     // the pages take all the room above; the tab strip sits at the bottom of the notebook, full width
                     LinearLayout pages = new LinearLayout(a);
                     pages.setOrientation(LinearLayout.VERTICAL);
+                    nbStrip = hs;
+                    nbPagesBox = pages;
                     outer.addView(pages, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
                     outer.addView(hs, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                     view = outer;
@@ -2806,6 +2823,16 @@ public final class Ui {
             String fill = optStr(o, "fill", "none");
             boolean expand = flag(o.get("expand"));
             if (kind.equals("Notebook")) { fill = "both"; expand = true; }   // the tab strip is at the bottom of the screen, so the notebook fills it
+            boolean nbRoot = kind.equals("Notebook") && p == root;
+            if (nbRoot) {                       // a notebook of the main window: edge to edge, tab strip at the very bottom of the screen
+                content.setPadding(0, 0, 0, 0);
+                nbPagesBox.setPadding(dp(12), dp(12), dp(12), dp(12));
+                o = new LinkedHashMap<String, Object>(o);
+                o.remove("padx"); o.remove("pady");
+                nbStrip.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                    public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) { liftVersionLabel(b - t); }
+                });
+            }
             boolean sideH = side.equals("left") || side.equals("right");
             if (p.kids == 0 && p.content instanceof LinearLayout) {
                 p.horiz = sideH;

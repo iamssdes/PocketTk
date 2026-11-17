@@ -1,5 +1,5 @@
 #!/system/bin/sh
-ui_print "- TkDroid v3.1.4 Patch 2: tkinter -> APK"
+ui_print "- TkDroid v3.1.4 Patch 3: tkinter -> APK"
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$MODPATH/apkapple.sh" 0 0 0755
 set_perm "$MODPATH/install_termux.sh" 0 0 0755
