@@ -4,7 +4,7 @@ KernelSU module: turn a Python **tkinter** script into an installable Android AP
 (Python is transpiled to Java; there is no embedded CPython.)
 
 ## About this project
-Made by SSDES & Claude. The code was written by AI (Claude, made by Anthropic), directed by SSDES. It started as a fun idea. I do not take pride in this work as if it were mine: the AI did the work, I only had the idea and steered it.
+Made by SSDES. It started as a fun idea.
 
 ## Commands (run in Termux as a normal user, not tsu)
     tkdroid run app.py [--dispose] [--logs] [--debug] [--icon IMG] [--id NAME]   build + install + launch
