@@ -739,7 +739,7 @@ public final class Ext {
                 switch (name) {
                     case "argv": return Py.listOf(scriptName);
                     case "platform": return "linux";
-                    case "version": return "3.11 (TkDroid)";
+                    case "version": return "3.11 (PocketTk)";
                     case "maxsize": return Long.MAX_VALUE;
                     case "stdout": case "stderr": return new StdOut(name.equals("stderr"));
                     case "path": return Py.listOf();
@@ -943,7 +943,7 @@ public final class Ext {
             }
             case "getenv": return a.length > 1 ? a[1] : null;
             case "getpid": return (long) android_pid();
-            case "system": throw new Py.PyError("OSError", "os.system is not available in TkDroid apps");
+            case "system": throw new Py.PyError("OSError", "os.system is not available in PocketTk apps");
             case "path.exists": return Boolean.valueOf(resolve(Py.str(Py.arg(a, 0))).exists());
             case "path.isfile": return Boolean.valueOf(resolve(Py.str(Py.arg(a, 0))).isFile());
             case "path.isdir": return Boolean.valueOf(resolve(Py.str(Py.arg(a, 0))).isDirectory());
@@ -1443,7 +1443,7 @@ public final class Ext {
                 if (!src.isEmpty()) sb.append("    ").append(src).append('\n');
             }
         }
-        if (frames == 0) sb.append("  (error inside the TkDroid runtime)\n");
+        if (frames == 0) sb.append("  (error inside the PocketTk runtime)\n");
         sb.append(pe.toString());
         if (!(t instanceof Py.PyError)) sb.append("\n[java] ").append(t);
         return sb.toString();

@@ -1,0 +1,4 @@
+#!/bin/sh
+# PocketTk launcher for Linux (and anything with python3)
+d=$(dirname "$(readlink -f "$0")")
+exec python3 "$d/pockettk.py" "$@"

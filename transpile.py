@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TkDroid transpiler: a tkinter program (a practical subset of Python) -> Java source
+PocketTk transpiler: a tkinter program (a practical subset of Python) -> Java source
 for an Android Activity, plus the helpers that package a signed-ready APK.
 
     transpile.py gen  SCRIPT.py OUTDIR --pkg com.x.y --label "Name"
@@ -37,7 +37,7 @@ FILEPICK = {"askopenfilename", "asksaveasfilename", "askopenfilenames", "askopen
             "askdirectory"}
 FEATURES = {"fppe", "dpooa", "filepick", "datasaving", "audio"}
 
-# ---- edition: make_demo.py flips DEMO to True when it builds the TkDroid Demo module. The demo only builds
+# ---- edition: make_demo.py flips DEMO to True when it builds the PocketTk Demo module. The demo only builds
 # small, plain scripts: see demo_check() and the feature filter in cmd_gen().
 DEMO = False
 DEMO_MAX_LINES = 100                                    # longest script (lines) the demo builds
@@ -45,9 +45,9 @@ DEMO_FEATURES = {"fppe"}                                # the only #use: items t
 DEMO_BLOCKED_MODULES = {"socket", "urllib", "requests", "sqlite3", "threading", "os", "csv"}
 DEMO_BLOCKED_WIDGETS = {"Canvas", "Toplevel", "Notebook", "Menu", "Menubutton", "OptionMenu", "PanedWindow",
                         "Scale", "Spinbox"}
-# ---- edition: make_consumer.py flips CONSUMER to True when it builds the TkDroid Consumer module. Its only limit:
+# ---- edition: make_consumer.py flips CONSUMER to True when it builds the PocketTk Consumer module. Its only limit:
 # no `#use: builtin-editing` (and so no `#builtins:` lines), which means the version label (the link to the
-# About TkDroid page) always shows. See parse_directives().
+# About PocketTk page) always shows. See parse_directives().
 CONSUMER = False
 FEATURE_ALIASES = {
     "native": "filepick", "filepicker": "filepick", "nativefilepicker": "filepick", "filepick": "filepick",
@@ -265,7 +265,7 @@ def parse_directives(source, audio=None, off=None):
                     continue
                 f = FEATURE_ALIASES.get(low)
                 if f == "builtin-editing" and CONSUMER:
-                    warns.append("line %d: #use: builtin-editing is not in the TkDroid Consumer version - ignored" % no)
+                    warns.append("line %d: #use: builtin-editing is not in the PocketTk Consumer version - ignored" % no)
                     continue
                 if f:
                     feats.add(f)
@@ -292,7 +292,7 @@ def parse_directives(source, audio=None, off=None):
             feats.add(m.group(1).lower())
     for no, names, word in edits:
         if CONSUMER:
-            warns.append("line %d: #builtins: is not in the TkDroid Consumer version - ignored (the version label always shows)" % no)
+            warns.append("line %d: #builtins: is not in the PocketTk Consumer version - ignored (the version label always shows)" % no)
             continue
         if "builtin-editing" not in feats:
             warns.append("line %d: #builtins: needs #use: builtin-editing at the top - ignored" % no)
@@ -2150,7 +2150,7 @@ def manifest(pkg, label, features=()):
 # ------------------------------------------------------------------------- demo edition
 
 def demo_check(source, tree):
-    """The TkDroid Demo only builds small, plain scripts. Returns the list of reasons this one is refused."""
+    """The PocketTk Demo only builds small, plain scripts. Returns the list of reasons this one is refused."""
     errs = []
     n = len(source.splitlines())
     if n > DEMO_MAX_LINES:
@@ -2201,7 +2201,7 @@ def cmd_gen(a):
         if problems:
             for e in problems:
                 sys.stderr.write("demo limit: %s\n" % e)
-            sys.stderr.write("The full TkDroid has no such limits and is open source: github.com/iamssdes/TkDroid\n")
+            sys.stderr.write("The full PocketTk has no such limits and is open source: github.com/iamssdes/PocketTk\n")
             return 2
         for f in sorted(feats - DEMO_FEATURES):
             if f != "builtin-editing":
@@ -2424,12 +2424,12 @@ def main(argv=None):
     g = sub.add_parser("gen")
     g.add_argument("script")
     g.add_argument("outdir")
-    g.add_argument("--pkg", default="tkdroid.ssdes")
+    g.add_argument("--pkg", default="pockettk.ssdes")
     g.add_argument("--label", default="Apple App")
-    g.add_argument("--audio-cache", default=os.path.join(os.path.expanduser("~"), ".tkdroid", "audio-cache"))
+    g.add_argument("--audio-cache", default=os.path.join(os.path.expanduser("~"), ".pockettk", "audio-cache"))
     g.add_argument("--no-assets", action="store_true", help="do not fetch/bundle #audio: tracks (apkapple check)")
     g.add_argument("--debug", action="store_true", help="show a log panel next to the app")
-    g.add_argument("--apple", default="", help="TkDroid version shown in the version label (Built With ...)")
+    g.add_argument("--apple", default="", help="PocketTk version shown in the version label (Built With ...)")
     g.set_defaults(fn=cmd_gen)
     v = sub.add_parser("setvc")
     v.add_argument("apk")

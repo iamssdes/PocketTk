@@ -31,7 +31,7 @@ final class Online {
     }
 
     private static final Charset UTF8 = Charset.forName("UTF-8");
-    private static final String UA = "Mozilla/5.0 (Linux; Android) TkDroid";
+    private static final String UA = "Mozilla/5.0 (Linux; Android) PocketTk";
     private static final int MAX_REDIRECTS = 6;
 
     // ------------------------------------------------------------------------------------ download

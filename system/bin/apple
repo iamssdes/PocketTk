@@ -1,2 +1,2 @@
 #!/system/bin/sh
-exec /system/bin/sh /data/adb/modules/apple/apkapple.sh "$@"
+POCKETTK_CALLED=apple exec /system/bin/sh /data/adb/modules/apple/apkapple.sh "$@"

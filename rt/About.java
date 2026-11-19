@@ -28,8 +28,8 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * The "About TkDroid" page, opened from the link in the version label.
- * A plain scrolling page: what TkDroid is, how apps are made with it, who makes it, and whether you can use it
+ * The "About PocketTk" page, opened from the link in the version label.
+ * A plain scrolling page: what PocketTk is, how apps are made with it, who makes it, and whether you can use it
  * (yes: it is open source, with a button to the GitHub repo).
  * "Download the demo" copies the demo module out of the app itself (it is bundled in the APK / AAB as an asset) into
  * Downloads; "Submit a request" opens the Request page.
@@ -37,8 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class About extends Activity {
     static final int BG = 0xFF101418, TEXT = 0xFFE6EDF3, DIM = 0xFFA9B4BF, HEAD = 0xFF8BE9FD, WARN = 0xFFFFC857;
 
-    /** Where TkDroid lives now that it is open source. */
-    static final String REPO_URL = "https://github.com/iamssdes/TkDroid";
+    /** Where PocketTk lives now that it is open source. */
+    static final String REPO_URL = "https://github.com/iamssdes/PocketTk";
 
     float density = 1f;
     TextView demoStatus, demoOpen;
@@ -52,7 +52,7 @@ public class About extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         density = getResources().getDisplayMetrics().density;
-        setTitle("About TkDroid");
+        setTitle("About PocketTk");
 
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(BG);
@@ -62,17 +62,17 @@ public class About extends Activity {
         page.setPadding(dp(20), dp(36), dp(20), dp(28));
         sv.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        text(page, "About TkDroid", 36, TEXT, true, 0);
+        text(page, "About PocketTk", 36, TEXT, true, 0);
         String built = Ui.builtWith;
-        text(page, built != null && built.length() > 0 ? "This app was built with TkDroid " + built : "tkinter to Android, on your phone", 12, DIM, false, 4);
+        text(page, built != null && built.length() > 0 ? "This app was built with PocketTk " + built : "tkinter to Android, on your phone", 12, DIM, false, 4);
 
-        heading(page, "What is TkDroid?");
-        text(page, "TkDroid turns a Python tkinter program into a real Android app. You write the program the way you "
-                + "would for a desktop window, with buttons, text boxes, labels and canvases, and TkDroid gives you an "
-                + "installable APK. It all happens on the phone: TkDroid is a KernelSU module with a Termux command, "
-                + "so no computer is needed.", 15, TEXT, false, 6);
+        heading(page, "What is PocketTk?");
+        text(page, "PocketTk turns a Python tkinter program into a real Android app. You write the program the way you "
+                + "would for a desktop window, with buttons, text boxes, labels and canvases, and PocketTk gives you an "
+                + "installable APK. It can all happen on the phone, in Termux (with or without root), or on a Windows or "
+                + "Linux computer, where a preview window shows the app in a phone-shaped frame.", 15, TEXT, false, 6);
         text(page, "tkinter is the window toolkit that comes with Python, so if you have written a small desktop "
-                + "program in Python you already know most of what you need. Your Python code stays Python. TkDroid "
+                + "program in Python you already know most of what you need. Your Python code stays Python. PocketTk "
                 + "takes care of the Android side for you: the manifest, the icon, signing and installing.", 15, TEXT, false, 10);
 
         heading(page, "Why?");
@@ -80,31 +80,32 @@ public class About extends Activity {
 
         heading(page, "How are apps made with it?");
         step(page, "1.  Write a Python script that uses tkinter.");
-        step(page, "2.  Run  tkdroid run app.py  in Termux.");
-        step(page, "3.  TkDroid translates your Python into Java and compiles it together with its runtime, the part "
+        step(page, "2.  Run  pockettk run app.py  in Termux or on your computer.");
+        step(page, "3.  PocketTk translates your Python into Java and compiles it together with its runtime, the part "
                 + "that turns tkinter widgets into real Android views. Then it signs the APK and installs it.");
         step(page, "4.  The result is a native app. No Python runs on the phone while it is open.");
-        step(page, "5.  Change the script and run  tkdroid update --id NAME  to rebuild it over the old app. "
+        step(page, "5.  Change the script and run  pockettk update --id NAME  to rebuild it over the old app. "
                 + "Its saved data is kept.");
-        text(page, "Give an app an id with  --id NAME  and TkDroid remembers its name, icon, version and package, so "
+        text(page, "Give an app an id with  --id NAME  and PocketTk remembers its name, icon, version and package, so "
                 + "every later build installs over it as an update instead of as a new app.", 15, TEXT, false, 10);
         text(page, "Apps can also be floating windows over other apps, remember their variables between runs, play music "
                 + "bundled inside the app, and open files with the system file picker. A debug build shows a log panel "
                 + "under the app while you test a change.", 15, TEXT, false, 10);
 
         heading(page, "About the developer");
-        text(page, "TkDroid is made by SSDES, a very indie developer. It is an independent project, made without a "
+        text(page, "PocketTk is made by SSDES, a very indie developer. It is an independent project, made without a "
                 + "company or a publisher behind it.", 15, TEXT, false, 6);
-        text(page, "It started out as a tool called ApkApple and was renamed TkDroid. It is built to run entirely on a "
-                + "phone, for people who use KernelSU and Termux.", 15, TEXT, false, 10);
-        text(page, "TkDroid is tested on the developer's own phone. Phones differ, so results may vary depending on the "
-                + "age of the device, its Android version and its root status.", 15, TEXT, false, 10);
+        text(page, "It started out as a tool called ApkApple, was renamed TkDroid, and is now PocketTk. The old command names "
+                + "tkdroid, apkapple and apple are deprecated: the command is pockettk. It began as a KernelSU module for Termux and now also "
+                + "runs on unrooted phones, Windows, Linux and macOS (where it can also build iOS apps).", 15, TEXT, false, 10);
+        text(page, "PocketTk is tested on the developer's own phone. Phones differ, so results may vary depending on the "
+                + "age of the device, its Android version and its root status. The PC preview is approximate and is not Android.", 15, TEXT, false, 10);
         text(page, "It is still a work in progress: features are added and changed from version to version, and "
                 + "things may still break.", 15, TEXT, false, 10);
 
         heading(page, "Can I use it?");
         text(page, "Short answer: Yes.", 19, TEXT, true, 8);
-        text(page, "TkDroid is open source. You can use it, read the code, change it and share it. "
+        text(page, "PocketTk is open source. You can use it, read the code, change it and share it. "
                 + "The code, the install steps and the issue tracker are on GitHub.", 15, TEXT, false, 8);
         button(page, "Open the repo on GitHub", 16, new Runnable() { public void run() { openRepo(); } });
         TextView url = text(page, REPO_URL.replace("https://", ""), 15, HEAD, true, 10);
@@ -140,7 +141,7 @@ public class About extends Activity {
         demoStatus.setVisibility(View.VISIBLE);
     }
 
-    /** The demo module zip bundled in the app (assets/). The full TkDroid adds it to every APK / AAB it builds. */
+    /** The demo module zip bundled in the app (assets/). The full PocketTk adds it to every APK / AAB it builds. */
     static final String DEMO_ASSET = "TkDroid_Demo.zip";
 
     /** Is the demo module bundled in this app? (The demo edition cannot contain itself, so apps built with it are not.) */
@@ -165,7 +166,7 @@ public class About extends Activity {
         demoBar.setIndeterminate(true);
         demoBar.setVisibility(View.VISIBLE);
         setDemoStatus("Saving the demo...", WARN);
-        Thread th = new Thread(new Runnable() { public void run() { saveDemo(DEMO_ASSET, "TkDroid_Demo.zip"); } }, "tkdroid-demo-save");
+        Thread th = new Thread(new Runnable() { public void run() { saveDemo(DEMO_ASSET, "TkDroid_Demo.zip"); } }, "pockettk-demo-save");
         th.setDaemon(true);
         th.start();
     }
@@ -183,7 +184,7 @@ public class About extends Activity {
             int n = in.read(buf);
             // what is inside the app must really be a zip (a module zip starts with "PK\3\4")
             if (n < 4 || buf[0] != 'P' || buf[1] != 'K' || buf[2] != 3 || buf[3] != 4) {
-                throw new Online.Failure("The demo bundled in this app is damaged. Build the app again with the full TkDroid.");
+                throw new Online.Failure("The demo bundled in this app is damaged. Build the app again with the full PocketTk.");
             }
             if (Build.VERSION.SDK_INT >= 29) {                    // the public Downloads folder, no permission needed
                 ContentValues cv = new ContentValues();
@@ -287,7 +288,7 @@ public class About extends Activity {
         }
     }
 
-    /** "Submit a request": opens the TkDroid Request page. */
+    /** "Submit a request": opens the PocketTk Request page. */
     void openRequest() {
         try {
             startActivity(new Intent(this, Request.class));

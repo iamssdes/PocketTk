@@ -1,6 +1,8 @@
 #!/system/bin/sh
-# TkDroid - tkinter -> APK. KernelSU module CLI (command: tkdroid; old names apkapple, apple also work).
+# PocketTk - tkinter -> APK. KernelSU module CLI (command: pockettk; the old names tkdroid, apkapple and apple still work but are deprecated).
 IS_ROOT=0; [ "$(id -u)" = 0 ] && IS_ROOT=1
+# No su at all = an unrooted phone: apps are installed through the system installer (or adb), see unrooted_setup.
+UNROOTED=0; [ "$IS_ROOT" = 1 ] || command -v su >/dev/null 2>&1 || UNROOTED=1
 if [ "$IS_ROOT" = 1 ]; then
   # Root shells from Termux (tsu) export LD_LIBRARY_PATH/LD_PRELOAD, which breaks Android's own tools.
   unset LD_LIBRARY_PATH LD_PRELOAD
@@ -12,16 +14,16 @@ MODDIR=$(cd "$(dirname "$0")" && pwd)
 TERMUX=${APKAPPLE_TERMUX:-/data/data/com.termux/files/usr}
 TXHOME=${APKAPPLE_HOME:-/data/data/com.termux/files/home}
 if [ "$IS_ROOT" = 1 ]; then
-  WORK=/data/local/tmp/tkdroid; KS_DIR=/data/adb/tkdroid
+  WORK=/data/local/tmp/pockettk; KS_DIR=/data/adb/pockettk
 else
-  WORK="$HOME/.tkdroid/work"; KS_DIR="$HOME/.tkdroid"
+  WORK="$HOME/.pockettk/work"; KS_DIR="$HOME/.pockettk"
 fi
-OUT_DIR=/sdcard/Download/TkDroid
-VERSION="TkDroid v3.1.4 Patch 4"
-EDITION=full          # make_demo.py sets this to "demo" (TkDroid Demo), make_consumer.py to "consumer" (TkDroid Consumer)
+OUT_DIR=/sdcard/Download/PocketTk
+VERSION="PocketTk v4.0.0"
+EDITION=full          # make_demo.py sets this to "demo" (PocketTk Demo), make_consumer.py to "consumer" (PocketTk Consumer)
 EDITION_TAG=""; [ "$EDITION" = demo ] && EDITION_TAG=" Demo"; [ "$EDITION" = consumer ] && EDITION_TAG=" Consumer"
-PKG_PREFIX="tkdroid.ssdes."
-LEGACY_PKG_PREFIXES="tkdroid.palalgon. tkdroid.molt. apple.app."      # packages of apps built before the name changed
+PKG_PREFIX="pockettk.ssdes."
+LEGACY_PKG_PREFIXES="tkdroid.ssdes. tkdroid.palalgon. tkdroid.molt. apple.app."      # packages of apps built before the name changed
 
 # legacy_suffix PKG -> the app name after an old prefix; fails when PKG is not on an old package
 legacy_suffix() {
@@ -31,17 +33,21 @@ legacy_suffix() {
   return 1
 }
 LAST="$KS_DIR/last-package"
-if [ "$IS_ROOT" = 0 ] && [ -d "$HOME/.apple" ] && [ ! -e "$HOME/.tkdroid" ] && [ -f "$MODDIR/migrate.sh" ]; then
-  . "$MODDIR/migrate.sh"; tkdroid_migrate_home "$HOME"      # old ApkApple folder -> ~/.tkdroid
+if [ "$IS_ROOT" = 0 ] && { [ -d "$HOME/.apple" ] || [ -d "$HOME/.tkdroid" ]; } && [ ! -e "$HOME/.pockettk" ] && [ -f "$MODDIR/migrate.sh" ]; then
+  . "$MODDIR/migrate.sh"; pockettk_migrate_home "$HOME"      # old ApkApple / TkDroid folder -> ~/.pockettk
 fi
 
-die() { echo "tkdroid: $*" >&2; exit 1; }
+case "$POCKETTK_CALLED" in
+  tkdroid|apkapple|apple) echo "pockettk: the name '$POCKETTK_CALLED' is deprecated and will be removed in a future version - use: pockettk $*" >&2;;
+esac
+
+die() { echo "pockettk: $*" >&2; exit 1; }
 say() { echo "- $*"; }
 
 # The demo edition is cut down: anything that needs a bigger edition stops here.
 demo_block() { # demo_block WHAT
   [ "$EDITION" = demo ] || return 0
-  die "$1 is not in the TkDroid Demo. The full TkDroid is open source: github.com/iamssdes/TkDroid"
+  die "$1 is not in the PocketTk Demo. The full PocketTk is open source: github.com/iamssdes/PocketTk"
 }
 
 
@@ -56,13 +62,13 @@ newest() { # newest <glob...> : last match by numeric version
 
 find_sdk() {
   for d in "$APPLE_SDK" "$TXHOME/android-sdk" "$TXHOME/Android/Sdk" "$TERMUX/share/android-sdk" \
-           /sdcard/TkDroid/sdk /sdcard/ApkApple/sdk /sdcard/Apple/sdk "$MODDIR/tools/sdk"; do
+           /sdcard/PocketTk/sdk /sdcard/ApkApple/sdk /sdcard/Apple/sdk "$MODDIR/tools/sdk"; do
     [ -n "$d" ] && [ -d "$d" ] && { echo "$d"; return; }
   done
 }
 
 find_android_jar() {
-  for f in "$APPLE_ANDROID_JAR" "$MODDIR/tools/android.jar" /sdcard/TkDroid/android.jar /sdcard/ApkApple/android.jar /sdcard/Apple/android.jar; do
+  for f in "$APPLE_ANDROID_JAR" "$MODDIR/tools/android.jar" "$HOME/.pockettk/android.jar" /sdcard/PocketTk/android.jar /sdcard/ApkApple/android.jar /sdcard/Apple/android.jar; do
     [ -n "$f" ] && [ -f "$f" ] && { echo "$f"; return; }
   done
   sdk=$(find_sdk)
@@ -87,6 +93,11 @@ mark() { if [ -n "$2" ]; then echo "  [ok]  $1: $2"; else echo "  [--]  $1: NOT 
 cmd_doctor() {
   MISSING=0
   echo "$VERSION toolchain check"
+  if [ "$UNROOTED" = 1 ]; then
+    if [ "$ADB" = 1 ]; then echo "  [ok]  mode: no root, adb connected (silent install, launch, logs)"
+    elif command -v termux-open >/dev/null 2>&1; then echo "  [ok]  mode: no root, installs through the Android installer (add adb for silent install and logs)"
+    else echo "  [--]  mode: no root and no termux-open: pkg install termux-tools"; MISSING=1; fi
+  fi
   mark "python3   " "$(find_tool python3)"
   mark "javac/ecj " "$(find_tool javac)$( [ -z "$(find_tool javac)" ] && find_tool ecj)"
   mark "java      " "$(find_tool java)"
@@ -97,7 +108,7 @@ cmd_doctor() {
   sg=$(find_tool apksigner); [ -z "$sg" ] && sg=$(find_lib apksigner.jar)
   mark "apksigner " "$sg"
   mark "android.jar" "$(find_android_jar)"
-  # optional: only needed for  tkdroid build app.py --aab  (Google Play upload)
+  # optional: only needed for  pockettk build app.py --aab  (Google Play upload)
   bt=$(find_bundletool); js=$(find_tool jarsigner)
   if [ -n "$bt" ] && [ -n "$js" ]; then echo "  [ok]  bundletool+jarsigner: $bt (--aab)"
   else echo "  [..]  bundletool+jarsigner: optional, for --aab  ->  download bundletool-all-VERSION.jar from github.com/google/bundletool/releases to ~/bundletool.jar"; fi
@@ -112,8 +123,8 @@ Missing pieces. In Termux (as the normal Termux user, NOT as root) run:
   pkg update && pkg install python openjdk-21 aapt2 apksigner dx
 and get android.jar (SDK platform) by either:
   * installing the Android SDK in Termux (build-tools + platforms;android-34), or
-  * copying any android.jar (API 26+) to /sdcard/TkDroid/android.jar
-Package names vary by Termux mirror/date; run `tkdroid doctor` again after each step.
+  * copying any android.jar (API 26+) to /sdcard/PocketTk/android.jar
+Package names vary by Termux mirror/date; run `pockettk doctor` again after each step.
 T
     return 1
   fi
@@ -124,12 +135,12 @@ T
 demo_notes() {
   cat <<'N'
 
-TkDroid DEMO - a cut-down edition. What works: run, build, check, install, logs, list, uninstall, demo, doctor.
+PocketTk DEMO - a cut-down edition. What works: run, build, check, install, logs, list, uninstall, demo, doctor.
   Scripts: plain tkinter, up to __MAXLINES__ lines; only  #use: fppe  is available (other #use: lines are ignored).
   Not in the demo: update / update-all / revert / ids / delete (--id), --icon, --dispose, -p, --aab, update kinds;
   no Canvas, Toplevel, Notebook, Menu, Scale, Spinbox; no network, files (open, os, csv), threads or sqlite3.
   Apps built with the demo always show the "Demo" version label.
-  The full TkDroid (no limits) is open source: github.com/iamssdes/TkDroid
+  The full PocketTk (no limits) is open source: github.com/iamssdes/PocketTk
 N
 }
 
@@ -137,36 +148,36 @@ N
 consumer_notes() {
   cat <<'N'
 
-TkDroid CONSUMER - not the full version (CONSUMER DOES NOT MEAN FULL). Everything works except one thing:
+PocketTk CONSUMER - not the full version (CONSUMER DOES NOT MEAN FULL). Everything works except one thing:
   #use: builtin-editing and the #builtins: lines are not available (they are ignored with a warning), so apps
-  built with the consumer version always show the version label, which is the link to About TkDroid.
+  built with the consumer version always show the version label, which is the link to About PocketTk.
 N
 }
 
 usage() {
   cat <<'U'
-TkDroid - turn a tkinter script into an Android APK   (command: tkdroid; old names: apkapple, apple)
+PocketTk - turn a tkinter script into an Android APK   (command: pockettk; the old names tkdroid, apkapple and apple are deprecated)
 
-  tkdroid run app.py [--dispose] [--logs] [--icon IMG] [--id NAME]   build + install + launch on this phone
-  tkdroid build app.py [-n NAME] [-p PACKAGE] [-o OUT.apk] [--icon IMG] [--id NAME] [-i] [-k]
-  tkdroid build app.py --aab [--id NAME] [--target-sdk N] [--keystore FILE [--ks-alias A]]   Android App Bundle for Google Play upload
-  tkdroid logs [PACKAGE|app.py] [-f] [-e] [-c]   errors/prints with Python line numbers
-  tkdroid check app.py        transpile only; show warnings and generated Java
-  tkdroid install file.apk    install an APK (pm install -r)
-  tkdroid update --id NAME [code.py] [--patch|--small|--medium|--large] [--debug]   rebuild + install over the old app (keeps its data)
-  tkdroid update --id NAME --new-pkg   move an app from an old package (tkdroid.molt.* / apple.app.*) to tkdroid.ssdes.* (what update-all does)
-  tkdroid revert --id NAME    restore the version saved by update --debug (normally automatic)
-  tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large]   update every app with an id to this TkDroid version (N at a time)
-                               (apps still on an old package, tkdroid.molt.* or apple.app.*, are moved to tkdroid.ssdes.*: data copied, old app removed)
-  tkdroid ids                 app ids you created
-  tkdroid delete --id NAME [-y]   uninstall the app (its data goes too) and remove the id
-  tkdroid delete-uninstalled      remove the ids of apps that are no longer installed
-  tkdroid list                apps built by TkDroid that are installed
-  tkdroid uninstall [PACKAGE|app.py|--all]
-  tkdroid demo                write sample scripts to /sdcard/Download/TkDroid/
-  tkdroid set-email [ADDRESS] set (or show) the email that About > Request sends to; kept across re-flashing
-  tkdroid doctor              verify the build toolchain
-  tkdroid help [--brief] | version     (help --brief: what this is and how to use it, in a few lines)
+  pockettk run app.py [--dispose] [--logs] [--icon IMG] [--id NAME]   build + install + launch on this phone
+  pockettk build app.py [-n NAME] [-p PACKAGE] [-o OUT.apk] [--icon IMG] [--id NAME] [-i] [-k]
+  pockettk build app.py --aab [--id NAME] [--target-sdk N] [--keystore FILE [--ks-alias A]]   Android App Bundle for Google Play upload
+  pockettk logs [PACKAGE|app.py] [-f] [-e] [-c]   errors/prints with Python line numbers
+  pockettk check app.py        transpile only; show warnings and generated Java
+  pockettk install file.apk    install an APK (pm install -r)
+  pockettk update --id NAME [code.py] [--patch|--small|--medium|--large] [--debug]   rebuild + install over the old app (keeps its data)
+  pockettk update --id NAME --new-pkg   move an app from an old package (tkdroid.ssdes.* and older) to pockettk.ssdes.* (update does this by itself; --keep-pkg stays on the old package)
+  pockettk revert --id NAME    restore the version saved by update --debug (normally automatic)
+  pockettk update-all [--force] [-j N] [--patch|--small|--medium|--large]   update every app with an id to this PocketTk version (N at a time)
+                               (apps still on an old package, tkdroid.ssdes.* and older, are moved to pockettk.ssdes.*: data copied, old app removed)
+  pockettk ids                 app ids you created
+  pockettk delete --id NAME [-y]   uninstall the app (its data goes too) and remove the id
+  pockettk delete-uninstalled      remove the ids of apps that are no longer installed
+  pockettk list                apps built by PocketTk that are installed
+  pockettk uninstall [PACKAGE|app.py|--all]
+  pockettk demo                write sample scripts to /sdcard/Download/PocketTk/
+  pockettk set-email [ADDRESS] set (or show) the email that About > Request sends to; kept across re-flashing
+  pockettk doctor              verify the build toolchain
+  pockettk help [--brief] | version     (help --brief: what this is and how to use it, in a few lines)
 
 update kinds (apps with --id; shown in the app's version label):
   --patch   raise the patch counter only:   1.2.3 Patch 1 -> Patch 2   (default)
@@ -184,8 +195,8 @@ update --debug:
   the previous version is installed back over it automatically (data kept, no uninstall).
 build:
   -n NAME     app label (default: file name)
-  -p PACKAGE  Android package id (default: tkdroid.ssdes.<name>)
-  -o OUT      output path (default: /sdcard/Download/TkDroid/<name>.apk)
+  -p PACKAGE  Android package id (default: pockettk.ssdes.<name>)
+  -o OUT      output path (default: /sdcard/Download/PocketTk/<name>.apk)
   -i          install after building
   -k          keep the work directory
   --debug     add the log panel
@@ -207,7 +218,7 @@ U
 
 brief() {
   cat <<'B'
-TkDroid - brief
+PocketTk - brief
 
 What it is
   A KernelSU module plus a Termux command. It reads your Python tkinter script, translates it to Java
@@ -216,17 +227,17 @@ What it is
   native code; there is no Python on the phone while the app runs.
 
 How to use (in Termux, as a normal user, not tsu)
-  tkdroid doctor                  check the build tools (first time only)
-  tkdroid demo                    write example scripts to /sdcard/Download/TkDroid/
-  tkdroid run app.py              build, install and launch
-  tkdroid run app.py --id notes   same, and remember the app as "notes"
-  tkdroid update --id notes       rebuild and install over it (data is kept)
-  tkdroid update --id notes --debug   try a change with a log panel; the old version returns when you close it
-  tkdroid logs -e                 show errors with your Python line numbers
+  pockettk doctor                  check the build tools (first time only)
+  pockettk demo                    write example scripts to /sdcard/Download/PocketTk/
+  pockettk run app.py              build, install and launch
+  pockettk run app.py --id notes   same, and remember the app as "notes"
+  pockettk update --id notes       rebuild and install over it (data is kept)
+  pockettk update --id notes --debug   try a change with a log panel; the old version returns when you close it
+  pockettk logs -e                 show errors with your Python line numbers
 
 Options go in comments at the top of the script, for example:
   #use: dpooa, datasaving, audio       floating window, saved variables, music
-Everything: tkdroid help        Details and limits: README.md
+Everything: pockettk help        Details and limits: README.md
 B
   if [ "$EDITION" = demo ]; then demo_notes; fi
   if [ "$EDITION" = consumer ]; then consumer_notes; fi
@@ -253,7 +264,7 @@ cmd_demo() {
 import tkinter as tk
 
 root = tk.Tk()
-root.title("TkDroid demo")
+root.title("PocketTk demo")
 
 name = tk.StringVar()
 greeting = tk.StringVar(value="Type your name")
@@ -278,7 +289,7 @@ tk.Label(root, textvariable=greeting, fg="blue").pack()
 root.mainloop()
 D
     say "wrote $OUT_DIR/hello.py"
-    say "try:  tkdroid run $OUT_DIR/hello.py"
+    say "try:  pockettk run $OUT_DIR/hello.py"
     return 0
   fi
   cat > "$OUT_DIR/demo.py" <<'D'
@@ -288,7 +299,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 root = tk.Tk()
-root.title("TkDroid demo")
+root.title("PocketTk demo")
 
 name = tk.StringVar()
 greeting = tk.StringVar(value="Type your name")
@@ -357,7 +368,7 @@ tk.Label(root, text="Music is playing", font=("Arial", 22, "bold")).pack(pady=40
 root.mainloop()
 D
   say "wrote $OUT_DIR/demo.py, $OUT_DIR/float.py and $OUT_DIR/audio.py"
-  say "try:  tkdroid run $OUT_DIR/demo.py        or:  tkdroid run $OUT_DIR/float.py --dispose"
+  say "try:  pockettk run $OUT_DIR/demo.py        or:  pockettk run $OUT_DIR/float.py --dispose"
 }
 
 # Grant "display over other apps" (needed for #use: dpooa); harmless for other apps.
@@ -368,9 +379,58 @@ grant_overlay() {
   pm grant "$1" android.permission.SYSTEM_ALERT_WINDOW >/dev/null 2>&1
 }
 
+# ---- unrooted phones -------------------------------------------------------------------------------
+# With adb (wireless debugging on this phone, or a USB cable) everything root does can be done through adb.
+# Without adb the APK is handed to Android's own installer: you tap Install, and Open afterwards.
+adb_ready() {
+  command -v adb >/dev/null 2>&1 || return 1
+  adb devices 2>/dev/null | awk 'NR > 1 && $2 == "device" { f = 1 } END { exit !f }'
+}
+unrooted_setup() {
+  [ "$UNROOTED" = 1 ] || return 0
+  ADB=0
+  if adb_ready; then
+    ADB=1
+    # the helpers below call pm/am/appops/logcat by name: point them at the device
+    pm() { adb shell pm "$@"; }
+    am() { adb shell am "$@"; }
+    cmd() { adb shell cmd "$@"; }
+    appops() { adb shell appops "$@"; }
+    monkey() { adb shell monkey "$@"; }
+    logcat() { adb logcat "$@"; }
+    dumpsys() { adb shell dumpsys "$@"; }
+  fi
+}
+unrooted_setup
+UNROOT_NOTE=0
+unrooted_note() {
+  [ "$UNROOT_NOTE" = 0 ] || return 0
+  UNROOT_NOTE=1
+  say "no root: using the Android installer (for silent install, launch and logs: pkg install android-tools, turn on Wireless debugging, adb pair, adb connect)"
+}
+# what root did for the internal helpers, for a phone without su
+as_user() {
+  _c=$1; shift
+  if [ "$ADB" = 1 ]; then
+    case "$_c" in
+      _grant|_launch|_has|_pkgs|_list|_uninstall|_logs) "cmd_$_c" "$@"; return;;
+    esac
+    echo "pockettk: this needs root, it is not available on an unrooted phone" >&2; return 1
+  fi
+  case "$_c" in
+    _grant) return 0;;
+    _launch) say "tap Open in the installer to start it"; return 0;;
+    _has|_pkgs|_list) return 1;;
+    _uninstall) for _p in "$@"; do am start -a android.intent.action.DELETE -d "package:$_p" >/dev/null 2>&1 && say "confirm the removal of $_p on the screen"; done; return 0;;
+    _logs) echo "pockettk: logs need adb on an unrooted phone: pkg install android-tools, turn on Wireless debugging, then adb pair and adb connect" >&2; return 1;;
+  esac
+  echo "pockettk: this needs root, it is not available on an unrooted phone" >&2; return 1
+}
+
 # Run a root-only helper: directly when already root, else through su.
 as_root() {
   if [ "$IS_ROOT" = 1 ]; then sh "$MODDIR/apkapple.sh" "$@"
+  elif [ "$UNROOTED" = 1 ]; then as_user "$@"
   else
     command -v su >/dev/null 2>&1 || die "no su found: launch root in DFRoot first, then retry"
     su -c "sh '$MODDIR/apkapple.sh' $*"
@@ -387,28 +447,42 @@ cmd_install() {
   # The package installer service cannot read /sdcard (FUSE), so stage the APK in /data/local/tmp first.
   tmp=/data/local/tmp/apkapple-install${pkg:+-$pkg}.apk     # per package: update-all installs several at once
   inst="cp '$1' $tmp && chmod 644 $tmp && pm install -r $tmp; r=\$?; rm -f $tmp; exit \$r"
+  if [ "$UNROOTED" = 1 ]; then
+    if [ "$ADB" = 1 ]; then
+      adb install -r -d "$1" || die "adb install failed (see message above)"
+    else
+      unrooted_note
+      command -v termux-open >/dev/null 2>&1 || die "termux-open not found: pkg install termux-tools   (or use adb)"
+      KEEP_APK=1
+      termux-open "$1" || die "could not open the installer"
+      say "tap Install on the screen (if Android blocks it: Settings > allow Termux to install unknown apps, then run again)"
+    fi
+    [ -n "$pkg" ] && as_root _grant "$pkg"
+    [ "$ADB" = 1 ] && say "installed${pkg:+: $pkg}"
+    return 0
+  fi
   if [ "$IS_ROOT" = 1 ]; then
     sh -c "$inst" || die "install failed (see message above)"
   else
-    command -v su >/dev/null 2>&1 || die "no su found: launch root in DFRoot first, then retry:  tkdroid install $1"
-    su -c "$inst" || die "install failed (is root launched? then:  tkdroid install $1)"
+    command -v su >/dev/null 2>&1 || die "no su found: launch root in DFRoot first, then retry:  pockettk install $1"
+    su -c "$inst" || die "install failed (is root launched? then:  pockettk install $1)"
   fi
   [ -n "$pkg" ] && as_root _grant "$pkg"
   say "installed${pkg:+: $pkg}"
 }
 
-# internal (root): tkdroid _grant PKG
+# internal (root): pockettk _grant PKG
 cmd__grant() { grant_overlay "$1"; }
 
-# internal (root): tkdroid _launch PKG [fg|closed APK BUILDDIR]
+# internal (root): pockettk _launch PKG [fg|closed APK BUILDDIR]
 cmd__launch() {
   pkg="$1"
   grant_overlay "$pkg"
   am start -n "$pkg/apple.gen.MainActivity" >/dev/null 2>&1 || monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 \
-    || { echo "tkdroid: could not launch $pkg" >&2; return 1; }
+    || { echo "pockettk: could not launch $pkg" >&2; return 1; }
 }
 
-# internal (root): tkdroid _watch PKG MODE APK BUILDDIR  -> uninstall when the app is gone
+# internal (root): pockettk _watch PKG MODE APK BUILDDIR  -> uninstall when the app is gone
 cmd__watch() {
   pkg="$1" mode="$2" apk="$3" bdir="$4"
   seen=0 gone=0 t0=$(date +%s)
@@ -439,7 +513,7 @@ cmd__watch() {
   echo "disposed $pkg" >> /data/local/tmp/apkapple-dispose.log
 }
 
-# internal (root): tkdroid _backup PKG DEST -> copy the installed APK of PKG to DEST (owned like DEST's folder)
+# internal (root): pockettk _backup PKG DEST -> copy the installed APK of PKG to DEST (owned like DEST's folder)
 cmd__backup() {
   _src=$(pm path "$1" 2>/dev/null | sed -n 's/^package://p' | head -n 1)
   [ -n "$_src" ] && [ -f "$_src" ] || return 1
@@ -450,10 +524,10 @@ cmd__backup() {
   chmod 644 "$2"
 }
 
-# internal (root): tkdroid _revert PKG APK -> install APK over PKG (keeps data), then delete APK
+# internal (root): pockettk _revert PKG APK -> install APK over PKG (keeps data), then delete APK
 cmd__revert() {
   _pkg="$1" _apk="$2" _tmp=/data/local/tmp/apkapple-revert.apk _log=/data/local/tmp/apkapple-debug.log
-  [ -f "$_apk" ] || { echo "tkdroid: no saved version to restore for $_pkg" >&2; return 1; }
+  [ -f "$_apk" ] || { echo "pockettk: no saved version to restore for $_pkg" >&2; return 1; }
   cp "$_apk" "$_tmp" && chmod 644 "$_tmp"
   if _out=$(pm install -r "$_tmp" 2>&1); then
     rm -f "$_tmp" "$_apk"
@@ -463,12 +537,12 @@ cmd__revert() {
   else
     rm -f "$_tmp"
     echo "revert of $_pkg FAILED: $_out" >> "$_log"
-    echo "tkdroid: restoring the previous version failed: $_out" >&2
+    echo "pockettk: restoring the previous version failed: $_out" >&2
     return 1
   fi
 }
 
-# internal (root): tkdroid _debugwatch PKG APK -> wait until the app is closed, then _revert
+# internal (root): pockettk _debugwatch PKG APK -> wait until the app is closed, then _revert
 cmd__debugwatch() {
   _p="$1" _a="$2"; seen=0 gone=0 t0=$(date +%s)
   while :; do
@@ -481,16 +555,16 @@ cmd__debugwatch() {
   cmd__revert "$_p" "$_a"
 }
 
-# sign_apk IN OUT with the TkDroid key (same key as every build, so Android accepts it as an update)
+# sign_apk IN OUT with the PocketTk key (same key as every build, so Android accepts it as an update)
 sign_apk() {
   _ks="$KS_DIR/apple.keystore"
-  [ -f "$_ks" ] || { echo "tkdroid: signing key not found ($_ks)" >&2; return 1; }
+  [ -f "$_ks" ] || { echo "pockettk: signing key not found ($_ks)" >&2; return 1; }
   _sg=$(find_tool apksigner)
   if [ -n "$_sg" ]; then
     tx "$_sg" sign --ks "$_ks" --ks-pass pass:android --key-pass pass:android --out "$2" "$1" || return 1
   else
     _sj=$(find_lib apksigner.jar); _jv=$(find_tool java)
-    [ -n "$_sj" ] && [ -n "$_jv" ] || { echo "tkdroid: apksigner not found - run: tkdroid doctor" >&2; return 1; }
+    [ -n "$_sj" ] && [ -n "$_jv" ] || { echo "pockettk: apksigner not found - run: pockettk doctor" >&2; return 1; }
     tx "$_jv" -jar "$_sj" sign --ks "$_ks" --ks-pass pass:android --key-pass pass:android --out "$2" "$1" || return 1
   fi
   rm -f "$2.idsig"
@@ -525,7 +599,7 @@ dex_classes() {
   fi
   # dx.jar is a dex file run by Android's dalvikvm, which aborts if Termux's LD_LIBRARY_PATH leaks in.
   tx "$DX" --dex --min-sdk-version=26 --output="$_out/classes.dex" "$1" \
-    || { echo "tkdroid: dx failed (try manually: unset LD_LIBRARY_PATH LD_PRELOAD; dx --dex --min-sdk-version=26 --output=/data/local/tmp/t.dex $1)" >&2; return 1; }
+    || { echo "pockettk: dx failed (try manually: unset LD_LIBRARY_PATH LD_PRELOAD; dx --dex --min-sdk-version=26 --output=/data/local/tmp/t.dex $1)" >&2; return 1; }
 }
 
 # ensure_rt : compile + dex the runtime (rt/*.java, ~270 KB of Java) ONCE and keep it in $KS_DIR/rt/<key>.
@@ -567,6 +641,7 @@ cmd_run() {
       --id)         demo_block "--id"; [ $# -ge 2 ] || die "--id needs a name"; extra="$extra --id $(q "$2")"; shift 2;;
       --patch|--small|--medium|--large) demo_block "$1"; extra="$extra $1"; shift;;
       -h|--help)    usage; return 0;;
+      --ipa|--sign|--profile|--simulator|--emulate) die "--ipa (iOS) builds only work on a Mac for now: run pockettk on macOS";;
       -*)           die "unknown option $1";;
       *)            src=$1; shift;;
     esac
@@ -582,8 +657,14 @@ cmd_run() {
   pkg="$BUILT_PKG"
   [ -n "$pkg" ] || pkg=$(cat "$LAST")
   cmd_install "$apk" "$pkg" || return 1
+  if [ "$UNROOTED" = 1 ] && [ "$ADB" = 0 ] && grep -qiE '^[[:space:]]*#.*dpooa' "$src"; then
+    say "this app floats over other apps: after installing, allow it under Settings > Apps > $(basename "$src" .py) > Display over other apps"
+  fi
   say "launching"
   as_root _launch "$pkg" || return 1
+  if [ "$dispose" = 1 ] && [ "$UNROOTED" = 1 ]; then
+    say "note: --dispose needs root, the app stays installed (remove it with: pockettk uninstall $pkg)"; dispose=0
+  fi
   if [ "$dispose" = 1 ]; then
     mode=fg
     grep -qiE '^[[:space:]]*#.*dpooa' "$src" && mode=closed
@@ -593,12 +674,12 @@ cmd_run() {
     if [ "$mode" = closed ]; then say "will be removed when the overlay is fully closed (x button)"
     else say "will be removed the moment it leaves the foreground"; fi
   else
-    rm -f "$apk"
+    [ "$KEEP_APK" = 1 ] || rm -f "$apk"      # the system installer reads it a moment later
   fi
-  if [ "$follow" = 1 ]; then cmd_logs "$pkg" -f; else say "errors/prints:  tkdroid logs"; fi
+  if [ "$follow" = 1 ]; then cmd_logs "$pkg" -f; else say "errors/prints:  pockettk logs"; fi
 }
 
-# internal (root): tkdroid _logs PKG FLAGS
+# internal (root): pockettk _logs PKG FLAGS
 cmd__logs() {
   pkg="$1"; shift
   follow=0 errs=0 clear=0
@@ -620,7 +701,7 @@ cmd__logs() {
   fi
 }
 
-# pkg_for_base NAME -> package of the app built from NAME.py: tkdroid.ssdes.NAME, or an older package of that name when only that is installed
+# pkg_for_base NAME -> package of the app built from NAME.py: pockettk.ssdes.NAME, or an older package of that name when only that is installed
 pkg_for_base() {
   _pn="${PKG_PREFIX}$1"
   as_root _has "$_pn" && { echo "$_pn"; return; }
@@ -640,7 +721,7 @@ cmd_logs() {
     esac
   done
   [ -n "$pkg" ] || { [ -f "$LAST" ] && pkg=$(cat "$LAST"); }
-  [ -n "$pkg" ] || die "no app yet - run one first: tkdroid run app.py"
+  [ -n "$pkg" ] || die "no app yet - run one first: pockettk run app.py"
   as_root _logs "$pkg" $flags
 }
 
@@ -653,12 +734,12 @@ cmd__uninstall() { for p in "$@"; do pm uninstall "$p" 2>&1 | sed "s/^/$p: /"; d
 
 cmd_list() {
   out=$(as_root _list)
-  [ -n "$out" ] && echo "$out" || echo "(no TkDroid apps installed)"
+  [ -n "$out" ] && echo "$out" || echo "(no PocketTk apps installed)"
 }
 
 cmd_uninstall() {
   case "$1" in
-    "") [ -f "$LAST" ] || die "usage: tkdroid uninstall PACKAGE|app.py|--all"; pkgs=$(cat "$LAST");;
+    "") [ -f "$LAST" ] || die "usage: pockettk uninstall PACKAGE|app.py|--all"; pkgs=$(cat "$LAST");;
     --all|-a) pkgs=$(as_root _list);;
     *.py) b=$(safe_name "$(basename "$1" .py)"); case "$b" in [0-9]*) b="a$b";; esac; pkgs=$(pkg_for_base "$b");;
     *) pkgs="$1";;
@@ -687,21 +768,21 @@ sign_aab() {
       _pw=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
       [ -n "$_pw" ] || return 1
       tx "$KEYTOOL" -genkeypair -keystore "$_ks" -storepass "$_pw" -keypass "$_pw" -alias upload \
-          -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=TkDroid upload key" >/dev/null 2>&1 || { echo "tkdroid: keytool failed" >&2; return 1; }
+          -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=PocketTk upload key" >/dev/null 2>&1 || { echo "pockettk: keytool failed" >&2; return 1; }
       ( umask 077; printf '%s' "$_pw" > "$_pf" )
       say "BACK UP both files, you need the same key for every future upload:"
       say "  $_ks"
       say "  $_pf"
     fi
-    [ -f "$_pf" ] || { echo "tkdroid: $_pf is missing (the password of $_ks)" >&2; return 1; }
+    [ -f "$_pf" ] || { echo "pockettk: $_pf is missing (the password of $_ks)" >&2; return 1; }
     _pw=$(cat "$_pf")
   else
-    [ -f "$_ks" ] || { echo "tkdroid: no such keystore: $_ks" >&2; return 1; }
-    _pw=$TKDROID_KS_PASS
+    [ -f "$_ks" ] || { echo "pockettk: no such keystore: $_ks" >&2; return 1; }
+    _pw=$POCKETTK_KS_PASS
     if [ -z "$_pw" ]; then printf 'password of %s: ' "$_ks" >&2; stty -echo 2>/dev/null; read -r _pw; stty echo 2>/dev/null; echo >&2; fi
     if [ -z "$_al" ]; then
       _al=$(tx "$KEYTOOL" -list -keystore "$_ks" -storepass "$_pw" 2>/dev/null | sed -n 's/^\([^,]*\), .*PrivateKeyEntry.*/\1/p' | head -1)
-      [ -n "$_al" ] || { echo "tkdroid: could not find a key alias in $_ks (use --ks-alias NAME)" >&2; return 1; }
+      [ -n "$_al" ] || { echo "pockettk: could not find a key alias in $_ks (use --ks-alias NAME)" >&2; return 1; }
     fi
   fi
   tx "$JARSIGNER" -keystore "$_ks" -storepass "$_pw" -keypass "$_pw" -sigalg SHA256withRSA -digestalg SHA-256 "$_f" "$_al" >/dev/null || return 1
@@ -730,6 +811,7 @@ cmd_build() {
       --keystore)   demo_block "--keystore"; [ $# -ge 2 ] || die "--keystore needs a file"; upks=$2; shift 2;;
       --ks-alias)   [ $# -ge 2 ] || die "--ks-alias needs a name"; upalias=$2; shift 2;;
       -h|--help)    usage; return 0;;
+      --ipa|--sign|--profile|--simulator|--emulate) die "--ipa (iOS) builds only work on a Mac for now: run pockettk on macOS";;
       -*)           die "unknown option $1";;
       *)            src=$1; shift;;
     esac
@@ -738,10 +820,10 @@ cmd_build() {
   [ -f "$src" ] || die "no such file: $src"
   case "$tsdk" in ""|[0-9][0-9]) ;; *) die "--target-sdk must be a number like 36";; esac
   if [ "$aab" = 1 ]; then
-    [ "$inst" = 0 ] || die "an .aab cannot be installed on the phone (it is for Google Play upload): use  tkdroid build app.py --aab  without -i / run"
+    [ "$inst" = 0 ] || die "an .aab cannot be installed on the phone (it is for Google Play upload): use  pockettk build app.py --aab  without -i / run"
     [ -z "$dbg" ] || die "--debug builds cannot be .aab files"
-    BUNDLETOOL=$(find_bundletool); [ -n "$BUNDLETOOL" ] || die "bundletool.jar not found (see: tkdroid doctor). Download it and put it at ~/bundletool.jar"
-    JARSIGNER=$(find_tool jarsigner); [ -n "$JARSIGNER" ] || die "jarsigner not found (it comes with openjdk-21) - run: tkdroid doctor"
+    BUNDLETOOL=$(find_bundletool); [ -n "$BUNDLETOOL" ] || die "bundletool.jar not found (see: pockettk doctor). Download it and put it at ~/bundletool.jar"
+    JARSIGNER=$(find_tool jarsigner); [ -n "$JARSIGNER" ] || die "jarsigner not found (it comes with openjdk-21) - run: pockettk doctor"
     [ -n "$tsdk" ] || tsdk=36
   else
     [ -n "$tsdk" ] || tsdk=34
@@ -783,25 +865,25 @@ cmd_build() {
   if [ "$aab" = 1 ]; then [ -n "$out" ] || out="$OUT_DIR/$sn.aab"; else [ -n "$out" ] || out="$OUT_DIR/$sn.apk"; fi
   vname="$verA.$verB.$verC"; [ "$verP" -gt 0 ] && vname="$vname-p$verP"
 
-  PY=$(find_tool python3);  [ -n "$PY" ] || die "python3 not found - run: tkdroid doctor"
+  PY=$(find_tool python3);  [ -n "$PY" ] || die "python3 not found - run: pockettk doctor"
   JAVAC=$(find_tool javac); ECJ=""
-  [ -n "$JAVAC" ] || { ECJ=$(find_tool ecj); [ -n "$ECJ" ] || die "javac/ecj not found - run: tkdroid doctor"; }
-  AAPT2=$(find_tool aapt2); [ -n "$AAPT2" ] || die "aapt2 not found - run: tkdroid doctor"
-  AJAR=$(find_android_jar); [ -n "$AJAR" ] || die "android.jar not found - run: tkdroid doctor"
+  [ -n "$JAVAC" ] || { ECJ=$(find_tool ecj); [ -n "$ECJ" ] || die "javac/ecj not found - run: pockettk doctor"; }
+  AAPT2=$(find_tool aapt2); [ -n "$AAPT2" ] || die "aapt2 not found - run: pockettk doctor"
+  AJAR=$(find_android_jar); [ -n "$AJAR" ] || die "android.jar not found - run: pockettk doctor"
   D8=$(find_tool d8); D8JAR=""; DX=""
-  if [ -z "$D8" ]; then D8JAR=$(find_lib d8.jar); [ -n "$D8JAR" ] || { DX=$(find_tool dx); [ -n "$DX" ] || die "d8/dx not found - run: tkdroid doctor"; }; fi
+  if [ -z "$D8" ]; then D8JAR=$(find_lib d8.jar); [ -n "$D8JAR" ] || { DX=$(find_tool dx); [ -n "$DX" ] || die "d8/dx not found - run: pockettk doctor"; }; fi
   SIGNER=$(find_tool apksigner); SIGJAR=""
-  [ -n "$SIGNER" ] || { SIGJAR=$(find_lib apksigner.jar); [ -n "$SIGJAR" ] || die "apksigner not found - run: tkdroid doctor"; }
+  [ -n "$SIGNER" ] || { SIGJAR=$(find_lib apksigner.jar); [ -n "$SIGJAR" ] || die "apksigner not found - run: pockettk doctor"; }
   JAVA=$(find_tool java); KEYTOOL=$(find_tool keytool)
-  [ -n "$JAVA" ] && [ -n "$KEYTOOL" ] || die "java/keytool not found - run: tkdroid doctor"
+  [ -n "$JAVA" ] && [ -n "$KEYTOOL" ] || die "java/keytool not found - run: pockettk doctor"
 
   B="$WORK/build/$sn"
   rm -rf "$B"; mkdir -p "$B/classes" "$B/dex" "$WORK/tmp" "$(dirname "$out")"
 
   say "transpiling $src"
-  tx "$PY" -I "$MODDIR/transpile.py" gen "$src" "$B" --pkg "$pkg" --label "$name" --audio-cache "$KS_DIR/audio-cache" --apple "v${VERSION#TkDroid v}${EDITION_TAG}" $dbg || die "transpile failed"
+  tx "$PY" -I "$MODDIR/transpile.py" gen "$src" "$B" --pkg "$pkg" --label "$name" --audio-cache "$KS_DIR/audio-cache" --apple "v${VERSION#PocketTk v}${EDITION_TAG}" $dbg || die "transpile failed"
   mkdir -p "$KS_DIR"; echo "$pkg" > "$LAST"
-  # The TkDroid Demo module is bundled inside every app (assets/TkDroid_Demo.zip, in the .apk and in the .aab): the
+  # The PocketTk Demo module is bundled inside every app (assets/TkDroid_Demo.zip, in the .apk and in the .aab): the
   # About page's "Download the demo" copies it out of the app, so no link is needed. The demo edition cannot contain
   # itself, so it bundles nothing.
   if [ "$EDITION" != demo ] && [ -f "$MODDIR/demo/TkDroid_Demo.zip" ]; then
@@ -810,7 +892,7 @@ cmd_build() {
   # APKAPPLE_NO_RTCACHE=1 : old behaviour (compile the runtime into every app, single dex)
   XDEX=""; RT_CLASSES=""; CPATH="$AJAR"
   if [ -z "$APKAPPLE_NO_RTCACHE" ]; then
-    ensure_rt || die "could not build the TkDroid runtime"
+    ensure_rt || die "could not build the PocketTk runtime"
     CPATH="$AJAR:$RT_CLASSES"
   else
     mkdir -p "$B/src/apple/rt"; cp "$MODDIR"/rt/*.java "$B/src/apple/rt/"
@@ -866,7 +948,7 @@ cmd_build() {
     say "creating signing key (one time)"
     mkdir -p "$KS_DIR"
     tx "$KEYTOOL" -genkeypair -keystore "$KS" -storepass android -keypass android -alias apple \
-        -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=TkDroid" >/dev/null 2>&1 || die "keytool failed"
+        -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=PocketTk" >/dev/null 2>&1 || die "keytool failed"
   fi
 
   say "signing"
@@ -882,7 +964,7 @@ cmd_build() {
     absrc=$(cd "$(dirname "$src")" && pwd)/$(basename "$src")
     absic=""; [ -n "$icon" ] && absic=$(cd "$(dirname "$icon")" && pwd)/$(basename "$icon")
     [ -n "$absic" ] || absic=$(sed -n 's/^icon=//p' "$IDF" 2>/dev/null)
-    printf 'pkg=%s\nvc=%s\nname=%s\nsrc=%s\nicon=%s\nver=%s\npatch=%s\napple=%s\n' "$pkg" "$vc" "$name" "$absrc" "$absic" "$verA.$verB.$verC" "$verP" "${VERSION#TkDroid v}" > "$IDF"
+    printf 'pkg=%s\nvc=%s\nname=%s\nsrc=%s\nicon=%s\nver=%s\npatch=%s\napple=%s\n' "$pkg" "$vc" "$name" "$absrc" "$absic" "$verA.$verB.$verC" "$verP" "${VERSION#PocketTk v}" > "$IDF"
     say "app id '$id' -> $pkg (version $verA.$verB.$verC$([ "$verP" -gt 0 ] && echo " Patch $verP"), code $vc)"
   fi
   [ "$keep" = 1 ] || rm -rf "$B"
@@ -892,32 +974,34 @@ cmd_build() {
   if [ "$inst" = 1 ]; then cmd_install "$out" "$pkg"; fi
 }
 
-# tkdroid update --id ID [code.py] [--icon IMG] [-n NAME] [-k]
+# pockettk update --id ID [code.py] [--icon IMG] [-n NAME] [-k]
 # Rebuilds the app registered under ID and installs it over the old one (data is kept).
 cmd_update() {
-  id="" src="" extra="" nolaunch=0 debug=0 newpkg=0
+  id="" src="" extra="" nolaunch=0 debug=0 newpkg=1
   while [ $# -gt 0 ]; do
     case "$1" in
       --id)   [ $# -ge 2 ] || die "--id needs a name"; id=$(safe_name "$2"); shift 2;;
       --no-launch) nolaunch=1; shift;;
       --debug) debug=1; shift;;
       --new-pkg) newpkg=1; shift;;
+      --keep-pkg) newpkg=0; shift;;
       -i|--install) shift;;
       -n|-o|--icon) [ $# -ge 2 ] || die "$1 needs a value"; extra="$extra $1 $(q "$2")"; shift 2;;
       -k)     extra="$extra -k"; shift;;
       --patch|--small|--medium|--large) extra="$extra $1"; shift;;
       -h|--help) usage; return 0;;
+      --ipa|--sign|--profile|--simulator|--emulate) die "--ipa (iOS) builds only work on a Mac for now: run pockettk on macOS";;
       -*)     die "unknown option $1";;
       *)      src=$1; shift;;
     esac
   done
-  [ -n "$id" ] || die "usage: tkdroid update --id ID [code.py] [-n NAME] [--icon IMG]"
+  [ -n "$id" ] || die "usage: pockettk update --id ID [code.py] [-n NAME] [--icon IMG]"
   IDF="$KS_DIR/ids/$id"
-  [ -f "$IDF" ] || die "unknown app id '$id' - create it first:  tkdroid run app.py --id $id   (see: tkdroid ids)"
+  [ -f "$IDF" ] || die "unknown app id '$id' - create it first:  pockettk run app.py --id $id   (see: pockettk ids)"
   [ -n "$src" ] || src=$(sed -n 's/^src=//p' "$IDF")
-  [ -f "$src" ] || die "source not found: $src - pass the file:  tkdroid update --id $id code.py"
+  [ -f "$src" ] || die "source not found: $src - pass the file:  pockettk update --id $id code.py"
   say "updating '$id' ($(sed -n 's/^pkg=//p' "$IDF"))"
-  # --new-pkg: an app still on an old package (tkdroid.molt.* / apple.app.*) is built and installed as tkdroid.ssdes.* instead
+  # an app still on an old package (tkdroid.ssdes.* and older) is built and installed as pockettk.ssdes.* instead: data copied, old app removed (--keep-pkg: stay)
   mig_old="" mig_new=""
   if [ "$newpkg" = 1 ] && [ "$debug" = 0 ]; then
     _op=$(sed -n 's/^pkg=//p' "$IDF")
@@ -928,9 +1012,10 @@ cmd_update() {
   fi
   if [ "$debug" = 1 ]; then
     [ "$IS_ROOT" = 0 ] || die "run this as your normal Termux user (type 'exit' to leave tsu)."
+    [ "$UNROOTED" = 0 ] || die "update --debug needs root (it saves and restores the installed version)"
     DDIR="$KS_DIR/debug"; mkdir -p "$DDIR"
     rv="$DDIR/$id-revert.apk"; prev="$DDIR/$id-prev.apk"
-    [ ! -f "$rv" ] || die "an earlier debug session of '$id' has not been restored yet. Run:  tkdroid revert --id $id"
+    [ ! -f "$rv" ] || die "an earlier debug session of '$id' has not been restored yet. Run:  pockettk revert --id $id"
     oldpkg=$(sed -n 's/^pkg=//p' "$IDF")
     prevver=$(sed -n 's/^ver=//p' "$IDF"); _pp=$(sed -n 's/^patch=//p' "$IDF"); [ "${_pp:-0}" -gt 0 ] && prevver="$prevver Patch $_pp"
     canrevert=0
@@ -980,23 +1065,23 @@ cmd_update() {
   fi
 }
 
-# tkdroid revert --id ID : install the version saved by `update --debug` over the app (if it was not restored)
+# pockettk revert --id ID : install the version saved by `update --debug` over the app (if it was not restored)
 cmd_revert() {
   id=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --id) [ $# -ge 2 ] || die "--id needs a name"; id=$(safe_name "$2"); shift 2;;
-      *) die "usage: tkdroid revert --id ID";;
+      *) die "usage: pockettk revert --id ID";;
     esac
   done
-  [ -n "$id" ] || die "usage: tkdroid revert --id ID"
-  [ -f "$KS_DIR/ids/$id" ] || die "unknown app id '$id' (see: tkdroid ids)"
+  [ -n "$id" ] || die "usage: pockettk revert --id ID"
+  [ -f "$KS_DIR/ids/$id" ] || die "unknown app id '$id' (see: pockettk ids)"
   [ -f "$KS_DIR/debug/$id-revert.apk" ] || die "nothing to restore for '$id'"
   as_root _revert "$(sed -n 's/^pkg=//p' "$KS_DIR/ids/$id")" "$KS_DIR/debug/$id-revert.apk"
 }
 
-# tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large]
-# Rebuilds every app that has an id with THIS version of TkDroid (new runtime, new built-ins) and installs
+# pockettk update-all [--force] [-j N] [--patch|--small|--medium|--large]
+# Rebuilds every app that has an id with THIS version of PocketTk (new runtime, new built-ins) and installs
 # it over the old one; data is kept. Apps already built with this version are skipped unless --force.
 # The runtime is compiled once (first app) and reused; several apps are then built at the same time (-j).
 cmd_update_all() {
@@ -1008,17 +1093,17 @@ cmd_update_all() {
       -j[0-9]*) jobs=${1#-j}; shift;;
       --patch|--small|--medium|--large) flags="$flags $1"; shift;;
       -h|--help) usage; return 0;;
-      *) die "unknown option $1  (usage: tkdroid update-all [--force] [-j N] [--patch|--small|--medium|--large])";;
+      *) die "unknown option $1  (usage: pockettk update-all [--force] [-j N] [--patch|--small|--medium|--large])";;
     esac
   done
   case "$jobs" in *[!0-9]*|0) die "-j needs a number of 1 or more";; esac
   [ "$IS_ROOT" = 0 ] || die "run this as your normal Termux user (type 'exit' to leave tsu)."
-  [ -d "$KS_DIR/ids" ] && ls "$KS_DIR/ids" 2>/dev/null | grep -q . || { echo "no app ids yet (use:  tkdroid run app.py --id NAME)"; return 0; }
+  [ -d "$KS_DIR/ids" ] && ls "$KS_DIR/ids" 2>/dev/null | grep -q . || { echo "no app ids yet (use:  pockettk run app.py --id NAME)"; return 0; }
   if [ -z "$jobs" ]; then      # half the cores, 1 to 3
     jobs=$(nproc 2>/dev/null); case "$jobs" in ''|*[!0-9]*) jobs=2;; esac
     jobs=$((jobs / 2)); [ "$jobs" -ge 1 ] || jobs=1; [ "$jobs" -le 3 ] || jobs=3
   fi
-  cur=${VERSION#TkDroid v}
+  cur=${VERSION#PocketTk v}
   installed=$(as_root _list)
   n_ok=0 n_skip=0 n_fail=0 failed="" todo="" sns="" dup=0
   for f in "$KS_DIR"/ids/*; do
@@ -1026,16 +1111,16 @@ cmd_update_all() {
     uid=$(basename "$f")
     built=$(sed -n 's/^apple=//p' "$f")
     upkg=$(sed -n 's/^pkg=//p' "$f")
-    legacy=0; _lsfx=$(legacy_suffix "$upkg") && legacy=1     # still on an old package (tkdroid.molt.* / apple.app.*)
+    legacy=0; _lsfx=$(legacy_suffix "$upkg") && legacy=1     # still on an old package (tkdroid.ssdes.* and older)
     if [ "$force" = 0 ] && [ "$built" = "$cur" ] && [ "$legacy" = 0 ]; then
-      say "$uid: already built with TkDroid $cur - skipped"; n_skip=$((n_skip + 1)); continue
+      say "$uid: already built with PocketTk $cur - skipped"; n_skip=$((n_skip + 1)); continue
     fi
     if [ -n "$installed" ] && ! printf '%s\n' "$installed" | grep -qxF "$upkg"; then
       if [ "$legacy" = 1 ]; then     # nothing installed to move: just rename the package in the record
         sed "s/^pkg=.*/pkg=${PKG_PREFIX}${_lsfx}/" "$f" > "$f.tmp.$$" && cat "$f.tmp.$$" > "$f"; rm -f "$f.tmp.$$"
         say "$uid: not installed - package name changed to ${PKG_PREFIX}${_lsfx}"
       fi
-      say "$uid: not installed - skipped (install it again with: tkdroid update --id $uid)"; n_skip=$((n_skip + 1)); continue
+      say "$uid: not installed - skipped (install it again with: pockettk update --id $uid)"; n_skip=$((n_skip + 1)); continue
     fi
     todo="$todo $uid"
     # two apps whose source files have the same name share a build folder and output file: never build those side by side
@@ -1063,7 +1148,7 @@ cmd_update_all() {
     say "updating $total apps, $jobs at a time"
     RUNDIR="$WORK/update-all"; rm -rf "$RUNDIR"; mkdir -p "$RUNDIR" "$WORK/tmp"
     pending="" bgpids="" started=0 finished=0
-    trap 'for _p in $bgpids; do kill $_p 2>/dev/null; done; echo "tkdroid: stopped" >&2; exit 130' INT TERM
+    trap 'for _p in $bgpids; do kill $_p 2>/dev/null; done; echo "pockettk: stopped" >&2; exit 130' INT TERM
     for uid in $todo; do
       started=$((started + 1))
       # the first app goes alone: it compiles the runtime that all the others reuse
@@ -1083,7 +1168,7 @@ cmd_update_all() {
   fi
   say "update-all: $n_ok updated, $n_skip skipped, $n_fail failed"
   [ "$n_ok" -gt 0 ] && say "open the apps again to see the new version"
-  [ "$n_fail" = 0 ] || { say "failed:$failed  (retry one with: tkdroid update --id NAME)"; return 1; }
+  [ "$n_fail" = 0 ] || { say "failed:$failed  (retry one with: pockettk update --id NAME)"; return 1; }
 }
 
 # used by cmd_update_all: --new-pkg for an id that is still on an old package
@@ -1108,7 +1193,7 @@ ua_reap() {
   pending="$_np"
 }
 
-# internal (root): tkdroid _migrate_data OLDPKG NEWPKG -> copy the old app's saved data into the new app, then uninstall the old one
+# internal (root): pockettk _migrate_data OLDPKG NEWPKG -> copy the old app's saved data into the new app, then uninstall the old one
 cmd__migrate_data() {
   _od="/data/data/$1" _nd="/data/data/$2"
   if [ -d "$_od" ] && [ -d "$_nd" ]; then
@@ -1126,9 +1211,9 @@ cmd__migrate_data() {
   pm uninstall "$1" >/dev/null 2>&1
 }
 
-# internal (root): tkdroid _has PKG  -> success when PKG is installed
+# internal (root): pockettk _has PKG  -> success when PKG is installed
 cmd__has() { pm path "$1" >/dev/null 2>&1; }
-# internal (root): tkdroid _pkgs  -> every installed package name
+# internal (root): pockettk _pkgs  -> every installed package name
 cmd__pkgs() { pm list packages 2>/dev/null | sed 's/^package://'; }
 
 # forget an id: its record plus anything left over from update --debug
@@ -1136,7 +1221,7 @@ drop_id() {
   rm -f "$KS_DIR/ids/$1" "$KS_DIR/debug/$1-revert.apk" "$KS_DIR/debug/$1-prev.apk" "$KS_DIR/debug/$1-unsigned.apk" "$KS_DIR/debug/$1.ids"
 }
 
-# tkdroid delete --id ID [-y] : uninstall the app (data included) and remove the id
+# pockettk delete --id ID [-y] : uninstall the app (data included) and remove the id
 cmd_delete() {
   id="" yes=0
   while [ $# -gt 0 ]; do
@@ -1144,13 +1229,13 @@ cmd_delete() {
       --id)     [ $# -ge 2 ] || die "--id needs a name"; id=$(safe_name "$2"); shift 2;;
       -y|--yes) yes=1; shift;;
       -h|--help) usage; return 0;;
-      *) die "usage: tkdroid delete --id ID [-y]";;
+      *) die "usage: pockettk delete --id ID [-y]";;
     esac
   done
-  [ -n "$id" ] || die "usage: tkdroid delete --id ID [-y]"
+  [ -n "$id" ] || die "usage: pockettk delete --id ID [-y]"
   [ "$IS_ROOT" = 0 ] || die "run this as your normal Termux user (type 'exit' to leave tsu)."
   IDF="$KS_DIR/ids/$id"
-  [ -f "$IDF" ] || die "unknown app id '$id' (see: tkdroid ids)"
+  [ -f "$IDF" ] || die "unknown app id '$id' (see: pockettk ids)"
   pkg=$(sed -n 's/^pkg=//p' "$IDF")
   if [ "$yes" = 0 ] && [ -t 0 ]; then
     printf "Delete '%s' (%s)? The app and its saved data are removed. Your script is kept. [y/N] " "$id" "$pkg"
@@ -1166,7 +1251,7 @@ cmd_delete() {
   say "deleted '$id': app uninstalled, id removed${dsrc:+ (your script $dsrc is untouched)}"
 }
 
-# tkdroid delete-uninstalled : remove the ids whose app is no longer installed
+# pockettk delete-uninstalled : remove the ids whose app is no longer installed
 cmd_delete_uninstalled() {
   [ "$IS_ROOT" = 0 ] || die "run this as your normal Termux user (type 'exit' to leave tsu)."
   [ -d "$KS_DIR/ids" ] && ls "$KS_DIR/ids" 2>/dev/null | grep -q . || { echo "no app ids yet"; return 0; }
@@ -1186,22 +1271,22 @@ cmd_delete_uninstalled() {
 }
 
 cmd_ids() {
-  [ -d "$KS_DIR/ids" ] && ls "$KS_DIR/ids" 2>/dev/null | grep -q . || { echo "no app ids yet (use:  tkdroid run app.py --id NAME)"; return 0; }
+  [ -d "$KS_DIR/ids" ] && ls "$KS_DIR/ids" 2>/dev/null | grep -q . || { echo "no app ids yet (use:  pockettk run app.py --id NAME)"; return 0; }
   for f in "$KS_DIR"/ids/*; do
     _v=$(sed -n 's/^ver=//p' "$f"); [ -n "$_v" ] || _v="1.0.$(( $(sed -n 's/^vc=//p' "$f") - 1 ))"
     _p=$(sed -n 's/^patch=//p' "$f"); [ "${_p:-0}" -gt 0 ] && _v="$_v Patch $_p"
-    _a=$(sed -n 's/^apple=//p' "$f"); _o=""; [ "$_a" = "${VERSION#TkDroid v}" ] || _o="  (built with TkDroid ${_a:-<2.3.1}; tkdroid update-all)"
+    _a=$(sed -n 's/^apple=//p' "$f"); _o=""; [ "$_a" = "${VERSION#PocketTk v}" ] || _o="  (built with PocketTk ${_a:-<2.3.1}; pockettk update-all)"
     printf '%-14s %s  v%s  %s%s\n' "$(basename "$f")" "$(sed -n 's/^pkg=//p' "$f")" "$_v" "$(sed -n 's/^src=//p' "$f")" "$_o"
   done
 }
 
 case "$EDITION:$1" in
   demo:update|demo:update-all|demo:updateall|demo:revert|demo:ids|demo:delete|demo:delete-uninstalled|demo:deleteuninstalled)
-    demo_block "tkdroid $1";;
+    demo_block "pockettk $1";;
 esac
 
-# tkdroid set-email [ADDRESS]: the address the About > Request page sends requests to. It is saved in
-# ~/.tkdroid/request_email and put back by the module every time it is flashed, so it only has to be set once.
+# pockettk set-email [ADDRESS]: the address the About > Request page sends requests to. It is saved in
+# ~/.pockettk/request_email and put back by the module every time it is flashed, so it only has to be set once.
 cmd_set_email() {
   [ "$IS_ROOT" = 0 ] || die "run this as your normal Termux user (type 'exit' to leave tsu)."
   if [ -z "$1" ]; then

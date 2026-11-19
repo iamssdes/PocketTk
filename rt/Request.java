@@ -22,7 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 /**
- * The TkDroid Request page, opened from "Submit a request" on the About page.
+ * The PocketTk Request page, opened from "Submit a request" on the About page.
  * Name (optional), email and request details (both required). "Send request" sends the request from inside the app:
  * a JSON post to Contact.FORM_ENDPOINT + Contact.REQUEST_EMAIL, a form-to-email service, so no server of our own is
  * needed. If that fails (offline, service refuses), the person's email app opens with the request filled in instead.
@@ -41,7 +41,7 @@ public class Request extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         density = getResources().getDisplayMetrics().density;
-        setTitle("TkDroid Request");
+        setTitle("PocketTk Request");
 
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(BG);
@@ -52,8 +52,8 @@ public class Request extends Activity {
         sv.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         text(page, "Request the consumer version", 30, TEXT, true, 0);
-        text(page, "Consumer is TkDroid without #use: builtin-editing. CONSUMER DOES NOT MEAN FULL.", 13, WARN, true, 8);
-        text(page, "Tell me who you are and what you want to use TkDroid for. The request is sent to me by email.",
+        text(page, "Consumer is PocketTk without #use: builtin-editing. CONSUMER DOES NOT MEAN FULL.", 13, WARN, true, 8);
+        text(page, "Tell me who you are and what you want to use PocketTk for. The request is sent to me by email.",
                 15, DIM, false, 8);
         text(page, "It is sent over the internet through " + Online.host(Contact.FORM_ENDPOINT)
                 + ". If that does not work, your email app opens with the request filled in.", 12, DIM, false, 6);
@@ -65,7 +65,7 @@ public class Request extends Activity {
         email = field(page, "you@example.com", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS, 1);
 
         label(page, "Request details *");
-        details = field(page, "What will you use TkDroid for?",
+        details = field(page, "What will you use PocketTk for?",
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, 5);
 
         text(page, "* required", 12, DIM, false, 8);
@@ -117,12 +117,12 @@ public class Request extends Activity {
             return;
         }
 
-        String built = Ui.builtWith != null && Ui.builtWith.length() > 0 ? " (app built with TkDroid " + Ui.builtWith + ")" : "";
+        String built = Ui.builtWith != null && Ui.builtWith.length() > 0 ? " (app built with PocketTk " + Ui.builtWith + ")" : "";
         String body = (n.length() > 0 ? "Name: " + n + "\n" : "")
                 + "Email: " + e + "\n\n"
-                + "What I want to use TkDroid for:\n" + d + "\n\n"
-                + "-- sent from the TkDroid Request page" + built + "\n";
-        String subject = "TkDroid consumer version request" + (n.length() > 0 ? " - " + n : "");
+                + "What I want to use PocketTk for:\n" + d + "\n\n"
+                + "-- sent from the PocketTk Request page" + built + "\n";
+        String subject = "PocketTk consumer version request" + (n.length() > 0 ? " - " + n : "");
 
         final String fSubject = subject, fBody = body;
         final String json = Online.json("name", n.length() > 0 ? n : "(not given)", "email", e, "message", body,
@@ -146,7 +146,7 @@ public class Request extends Activity {
                 final String fProblem = problem;
                 runOnUiThread(new Runnable() { public void run() { sent(fProblem, fSubject, fBody); } });
             }
-        }, "tkdroid-request");
+        }, "pockettk-request");
         th.setDaemon(true);
         th.start();
     }
@@ -179,7 +179,7 @@ public class Request extends Activity {
         } catch (Throwable t) {
             try {
                 ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                cm.setPrimaryClip(ClipData.newPlainText("TkDroid request", "To: " + Contact.REQUEST_EMAIL + "\nSubject: " + subject + "\n\n" + body));
+                cm.setPrimaryClip(ClipData.newPlainText("PocketTk request", "To: " + Contact.REQUEST_EMAIL + "\nSubject: " + subject + "\n\n" + body));
                 Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
             } catch (Throwable ignored) { /* nothing more to try */ }
             return "No email app was found. The request was copied: send it to " + Contact.REQUEST_EMAIL + " yourself.";

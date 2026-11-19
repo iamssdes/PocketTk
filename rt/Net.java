@@ -230,7 +230,7 @@ public final class Net {
             c.setRequestMethod(method);
             c.setConnectTimeout(timeoutMs); c.setReadTimeout(timeoutMs);
             c.setInstanceFollowRedirects(true);
-            c.setRequestProperty("User-Agent", "TkDroid");
+            c.setRequestProperty("User-Agent", "PocketTk");
             if (headers instanceof Map) for (Map.Entry<Object, Object> e : ((Map<Object, Object>) headers).entrySet()) c.setRequestProperty(Py.str(e.getKey()), Py.str(e.getValue()));
             if (body != null) { c.setDoOutput(true); OutputStream o = c.getOutputStream(); o.write(body); o.close(); }
             HttpResult r = new HttpResult();

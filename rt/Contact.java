@@ -1,8 +1,8 @@
 package apple.rt;
 
 /**
- * Where the "About TkDroid" page sends people. Set REQUEST_EMAIL, then build (flash) the module: every app
- * built afterwards uses it. (There is no demo link any more: the full TkDroid bundles the demo module inside every
+ * Where the "About PocketTk" page sends people. Set REQUEST_EMAIL, then build (flash) the module: every app
+ * built afterwards uses it. (There is no demo link any more: the full PocketTk bundles the demo module inside every
  * app it builds, and "Download the demo" copies it out of the app.)
  */
 final class Contact {

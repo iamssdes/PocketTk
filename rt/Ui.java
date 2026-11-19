@@ -206,7 +206,7 @@ public final class Ui {
         return overlay;
     }
 
-    /** Built-in: the app's version (versionName, e.g. "v1.4") and the ApkApple version it was built with, as small text at the bottom right, ending in an "About TkDroid" link. Touches outside the label pass through. */
+    /** Built-in: the app's version (versionName, e.g. "v1.4") and the ApkApple version it was built with, as small text at the bottom right, ending in an "About PocketTk" link. Touches outside the label pass through. */
     static void addVersionLabel(Activity a) {
         try {
             String v = a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName;
@@ -218,9 +218,9 @@ public final class Ui {
                 try { txt = "v" + v.substring(0, pi) + " Patch " + Integer.parseInt(v.substring(pi + 2)); }
                 catch (NumberFormatException ignored) { /* show it as is */ }
             }
-            if (builtWith != null && builtWith.length() > 0) txt = txt + ", Built With TkDroid " + builtWith;
-            // the end of the label is a link to the About TkDroid page
-            String link = "About TkDroid";
+            if (builtWith != null && builtWith.length() > 0) txt = txt + ", Built With PocketTk " + builtWith;
+            // the end of the label is a link to the About PocketTk page
+            String link = "About PocketTk";
             android.text.SpannableString sp = new android.text.SpannableString(txt + "  \u00B7  " + link);
             int from = sp.length() - link.length();
             sp.setSpan(new android.text.style.UnderlineSpan(), from, sp.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -253,13 +253,13 @@ public final class Ui {
         t.setLayoutParams(lp);
     }
 
-    /** The About TkDroid page (apple.rt.About). Works from overlay windows too. */
+    /** The About PocketTk page (apple.rt.About). Works from overlay windows too. */
     static void openAbout() {
         try {
             Intent i = new Intent(ctx, About.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(i);
-        } catch (Throwable t) { warn("could not open the About TkDroid page: " + t); }
+        } catch (Throwable t) { warn("could not open the About PocketTk page: " + t); }
     }
 
     static WindowManager wm;

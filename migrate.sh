@@ -1,6 +1,6 @@
 #!/system/bin/sh
-# Moves everything ApkApple kept to its TkDroid names. This file only defines functions:
-# customize.sh (on flash) calls tkdroid_migrate_all, and the tkdroid command calls tkdroid_migrate_home
+# Moves everything ApkApple / TkDroid kept to its PocketTk names. This file only defines functions:
+# customize.sh (on flash) calls pockettk_migrate_all, and the pockettk command calls pockettk_migrate_home
 # when it finds an old ~/.apple. Safe to run again: only an existing old folder is moved, nothing is overwritten.
 MG_TERMUX=${MG_TERMUX:-/data/data/com.termux/files}
 MG_ADB=${MG_ADB:-/data/adb}
@@ -28,22 +28,26 @@ mg_fix_ids() {
   for _f in "$1"/ids/*; do
     [ -f "$_f" ] || continue
     _t="$_f.tmp.$$"
-    sed -E '/^(src|icon)=/{s#/ApkApple/#/TkDroid/#g;s#/\.apple/#/.tkdroid/#g;}' "$_f" > "$_t" && cat "$_t" > "$_f"
+    sed -E '/^(src|icon)=/{s#/ApkApple/#/PocketTk/#g;s#/TkDroid/#/PocketTk/#g;s#/\.apple/#/.pockettk/#g;s#/\.tkdroid/#/.pockettk/#g;}' "$_f" > "$_t" && cat "$_t" > "$_f"
     rm -f "$_t"
   done
 }
 
-# tkdroid_migrate_home HOME: Termux home folder (~/.apple -> ~/.tkdroid)
-tkdroid_migrate_home() {
-  mg_move "$1/.apple" "$1/.tkdroid"
-  mg_fix_ids "$1/.tkdroid"
+# pockettk_migrate_home HOME: Termux home folder (~/.apple and ~/.tkdroid -> ~/.pockettk)
+pockettk_migrate_home() {
+  mg_move "$1/.apple" "$1/.pockettk"
+  mg_move "$1/.tkdroid" "$1/.pockettk"
+  mg_fix_ids "$1/.pockettk"
 }
 
-tkdroid_migrate_all() {
-  mg_move "$MG_ADB/apple" "$MG_ADB/tkdroid"                  # root's data (signing key, ids)
-  mg_fix_ids "$MG_ADB/tkdroid"
-  [ -d "$MG_TERMUX/home" ] && tkdroid_migrate_home "$MG_TERMUX/home"
-  mg_move "$MG_SD/Download/ApkApple" "$MG_SD/Download/TkDroid"   # demo scripts, built APKs
-  mg_move "$MG_SD/ApkApple" "$MG_SD/TkDroid"                     # android.jar / sdk you put there
-  rm -rf /data/local/tmp/apkapple                                # old temporary work folder
+pockettk_migrate_all() {
+  mg_move "$MG_ADB/apple" "$MG_ADB/pockettk"                 # root's data (signing key, ids)
+  mg_move "$MG_ADB/tkdroid" "$MG_ADB/pockettk"
+  mg_fix_ids "$MG_ADB/pockettk"
+  [ -d "$MG_TERMUX/home" ] && pockettk_migrate_home "$MG_TERMUX/home"
+  mg_move "$MG_SD/Download/ApkApple" "$MG_SD/Download/PocketTk"   # demo scripts, built APKs
+  mg_move "$MG_SD/Download/TkDroid" "$MG_SD/Download/PocketTk"
+  mg_move "$MG_SD/ApkApple" "$MG_SD/PocketTk"                     # android.jar / sdk you put there
+  mg_move "$MG_SD/TkDroid" "$MG_SD/PocketTk"
+  rm -rf /data/local/tmp/apkapple /data/local/tmp/tkdroid         # old temporary work folders
 }
