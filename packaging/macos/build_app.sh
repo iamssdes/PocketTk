@@ -110,7 +110,7 @@ plutil -lint "$APP/Contents/Info.plist"
 # ---- 5. does the finished app work? (no window opens: POCKETTK_GUI_SELFTEST)
 echo "== self-test"
 POCKETTK_GUI_SELFTEST=1 "$APP/Contents/MacOS/PocketTk"
-"$PY" -I "$APPDIR/pockettk.py" version
+PYTHONNOUSERSITE=1 "$PY" "$APPDIR/pockettk.py" version
 
 # ---- 6. sign
 if [ -n "${CODESIGN_IDENTITY:-}" ]; then

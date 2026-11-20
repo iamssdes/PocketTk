@@ -88,10 +88,11 @@ Copy-Item (Join-Path $Here "READ ME FIRST.txt") $Stage
 # ---- 5. does the finished app work? (no window opens)
 Write-Host "== self-test"
 $env:POCKETTK_GUI_SELFTEST = "1"
-& (Join-Path $Stage "python\python.exe") -I (Join-Path $app "pockettk_gui.py")
+$env:PYTHONNOUSERSITE = "1"
+& (Join-Path $Stage "python\python.exe") (Join-Path $app "pockettk_gui.py")
 if ($LASTEXITCODE -ne 0) { throw "self-test failed" }
 Remove-Item Env:\POCKETTK_GUI_SELFTEST
-& $py -I (Join-Path $app "pockettk.py") version
+& (Join-Path $Stage "python\python.exe") (Join-Path $app "pockettk.py") version
 
 # ---- 6. the zip and the installer
 $zip = Join-Path $Dist "PocketTk-$Version-windows-$Arch.zip"
