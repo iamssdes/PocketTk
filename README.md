@@ -1,4 +1,4 @@
-# PocketTk v4.1.0
+# PocketTk v4.1.1
 
 Turn a Python **tkinter** script into an installable Android APK (or, on a Mac, an iOS .ipa). Runs in Termux (rooted or not, as a KernelSU module or on its own), or on Windows, Linux and macOS.
 (Python is transpiled to Java, or to Swift for iOS; there is no embedded CPython.)
@@ -70,6 +70,9 @@ The same window on all three systems, and it is a terminal: a prompt with histor
 - **Linux:** the window uses Qt WebEngine from inside the package (about 250 MB, works on any common distribution). A very bare system may need a few desktop libraries; `READ ME FIRST.txt` lists them for Debian/Ubuntu. With your own Python you can also run `pip install pywebview` (GTK/WebKit2GTK via `python3-gi gir1.2-webkit2-4.1`, or `pywebview[qt]`) and `pockettk gui`.
 - **Building the packages:** `packaging/macos/build_app.sh`, `packaging\windows\build_app.ps1` (zip, plus the installer when Inno Setup is installed), `packaging/linux/build_app.sh`, each on its own system, or the GitHub Actions workflow `.github/workflows/apps.yml` (builds all of them and attaches them to a `v*` release). Tests: `python -m unittest tests.test_deps tests.test_gui tests.test_packaging tests.test_termux_connect`, `node tests/test_shell.js` and `node tests/test_core.js`.
 - **Not tested on real systems:** the windows and the packages were never run on a real Mac, Windows or Linux desktop. The installer, the build scripts and the Python side are tested here with stubs only. Android (Termux) has no window yet.
+
+### Testing the desktop apps on GitHub (no computer needed)
+Open the repository on github.com > **Actions** > **Desktop test** > **Run workflow** (the workflow file must be on the default branch to be listed). Three jobs run on Windows, macOS and Linux: **tests** (the full suite), **window** (opens the real PocketTk window, checks that the page and the Python bridge answer, attaches a screenshot) and **build an APK** (installs the JDK and Android SDK the way the window does on first run, then builds an APK and a Google Play bundle and checks what came out). A green tick means it worked on that system; open a red one to read the log. The summary page has a table, and the screenshots, APK and bundle can be downloaded from **Artifacts** at the bottom of the run. The two switches skip the window or the build when you only want the tests. The release workflow (**Desktop apps**) is separate and still runs when you push a `v*` tag.
 
 ### Google Play bundle (`--aab`)
 Works like the phone version: the `.aab` is signed with an upload key kept in `~/.pockettk/upload.keystore` (password in `upload.pass`; made on first use, **back both up**), or with your own `--keystore` (password from `POCKETTK_KS_PASS` or a prompt). Target SDK defaults to 36 for bundles. Every Play upload needs a higher version code, so build with `--id` so it counts up. It needs `bundletool` (`pockettk setup` downloads it, or put `bundletool-all-VERSION.jar` at `~/.pockettk/bundletool.jar`, or set `BUNDLETOOL`) and the JDK's `jarsigner`. An `.aab` can't be installed on a phone. Tested against a stand-in bundletool only, not Google's.

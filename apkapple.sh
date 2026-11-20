@@ -19,7 +19,7 @@ else
   WORK="$HOME/.pockettk/work"; KS_DIR="$HOME/.pockettk"
 fi
 OUT_DIR=/sdcard/Download/PocketTk
-VERSION="PocketTk v4.1.0"
+VERSION="PocketTk v4.1.1"
 EDITION=full          # make_demo.py sets this to "demo" (PocketTk Demo), make_consumer.py to "consumer" (PocketTk Consumer)
 EDITION_TAG=""; [ "$EDITION" = demo ] && EDITION_TAG=" Demo"; [ "$EDITION" = consumer ] && EDITION_TAG=" Consumer"
 PKG_PREFIX="pockettk.ssdes."

@@ -781,6 +781,47 @@ def _no_webview_help():
             % (sys.executable or "python3"))
 
 
+def _smoke(window, hold):
+    """`POCKETTK_GUI_SMOKE=1` (used by the GitHub test workflow): once the window is open, check that the page really loaded and
+    the Python side answers, keep the window open `hold` seconds (so a screenshot can be taken), print `smoke: ok` or
+    `smoke: FAILED (why)`, close the window. main() then returns 0 or 1."""
+    global _SMOKE_RESULT
+    why = "the page did not load in 60 seconds"
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        try:
+            if window.evaluate_js("document.readyState") == "complete":
+                have = window.evaluate_js("document.getElementById('screen') !== null && document.title")
+                if have == "PocketTk":
+                    why = ""
+                    break
+                why = "page loaded but the screen element or title is missing (%r)" % (have,)
+        except Exception as e:                       # the window is still starting
+            why = "evaluate_js: %s" % e
+        time.sleep(0.5)
+    if not why:
+        try:
+            if not callable(getattr(window, "evaluate_js", None)):
+                why = "no evaluate_js"
+            else:
+                res = window.evaluate_js("typeof window.pywebview !== 'undefined' && typeof window.pywebview.api !== 'undefined'")
+                if res is not True:
+                    why = "the Python bridge (pywebview.api) is not available in the page"
+        except Exception as e:
+            why = "bridge check: %s" % e
+    if not why:
+        time.sleep(max(0.0, hold))
+    _SMOKE_RESULT = why
+    print("smoke: %s" % ("ok (%s, python %s)" % (sys.platform, platform.python_version()) if not why else "FAILED (%s)" % why), flush=True)
+    try:
+        window.destroy()
+    except Exception:
+        pass
+
+
+_SMOKE_RESULT = None
+
+
 def main(script=None, pick=False):
     _ensure_streams()
     if os.environ.get("POCKETTK_GUI_SELFTEST"):
@@ -797,10 +838,23 @@ def main(script=None, pick=False):
     window = webview.create_window("PocketTk", html=page_html(), js_api=api, width=980, height=660, min_size=(640, 420),
                                    background_color="#1b2140")
     api._attach(window)
+    smoke = os.environ.get("POCKETTK_GUI_SMOKE")
     try:
-        webview.start(debug=bool(os.environ.get("POCKETTK_GUI_DEBUG")))
+        if smoke:
+            try:
+                hold = float(os.environ.get("POCKETTK_GUI_SMOKE_HOLD") or "0")
+            except ValueError:
+                hold = 0.0
+            webview.start(_smoke, (window, hold), debug=bool(os.environ.get("POCKETTK_GUI_DEBUG")))
+        else:
+            webview.start(debug=bool(os.environ.get("POCKETTK_GUI_DEBUG")))
     finally:
         api._shutdown()
+    if smoke:
+        if _SMOKE_RESULT is None:
+            print("smoke: FAILED (the window closed before the check ran)", flush=True)
+            return 1
+        return 1 if _SMOKE_RESULT else 0
     return 0
 
 

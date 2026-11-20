@@ -3,7 +3,9 @@
 #     packaging/linux/build_app.sh [x86_64|aarch64]          (default: this computer's architecture)
 # Needs: python3 and curl (python3 only reads the version and draws the icon), internet.
 #
-# Inside: a relocatable CPython (python-build-standalone) with pywebview + Qt (PyQt6 + QtWebEngine) + certifi, and PocketTk.
+# Inside: a relocatable CPython (python-build-standalone) with pywebview + Qt (PyQt6 + QtWebEngine, or PySide6 where there
+# are no PyQt6 WebEngine wheels, as on some aarch64 systems) + certifi, and PocketTk.
+#     QT_BINDING=auto|pyqt6|pyside6   which Qt to install (default auto: PyQt6 first, then PySide6)
 # Qt comes from pip wheels, so the app needs no GTK / WebKit packages and works on any common distribution; the price is size
 # (about 250 MB unpacked). NOT inside: a JDK and the Android SDK; the app downloads those on its first run.
 set -euo pipefail
@@ -52,8 +54,31 @@ PY="$APP/python/bin/python3"
 "$PY" -I -c "import sys; print('prefix:', sys.prefix)"
 
 # ---- 2. pywebview with Qt, and certifi
-echo "== installing pywebview, Qt and certifi"
-"$PY" -m pip install --disable-pip-version-check --no-warn-script-location --no-compile pywebview qtpy PyQt6 PyQt6-WebEngine certifi
+echo "== installing pywebview, Qt and certifi   ($(uname -m), $(ldd --version 2>&1 | head -n 1))"
+pipi() { "$PY" -m pip install --disable-pip-version-check --no-warn-script-location --no-compile "$@"; }
+QT_BINDING="${QT_BINDING:-auto}"
+QTLOG="$OUT/pip-qt.log"
+pipi pywebview qtpy certifi
+# Only binary wheels: when a platform has none, pip must say so at once instead of trying (and failing) to build Qt from source.
+install_qt() {   # install_qt pyqt6|pyside6
+  case "$1" in
+    pyqt6)   pipi --only-binary=:all: PyQt6 PyQt6-WebEngine;;
+    pyside6) pipi --only-binary=:all: PySide6;;
+  esac
+}
+drop_qt() {      # remove what a failed attempt left behind, so two bindings are never mixed
+  "$PY" -m pip uninstall -y -q PyQt6 PyQt6-Qt6 PyQt6-sip PyQt6-WebEngine PyQt6-WebEngine-Qt6 PySide6 PySide6-Essentials PySide6-Addons shiboken6 >/dev/null 2>&1 || true
+}
+QT_API_NAME=""
+for b in $( [ "$QT_BINDING" = auto ] && echo "pyqt6 pyside6" || echo "$QT_BINDING" ); do
+  echo "== trying $b"
+  if install_qt "$b" >"$QTLOG" 2>&1; then QT_API_NAME="$b"; break; fi
+  echo "-- $b could not be installed on $ARCH; the last lines of pip say why:" >&2
+  tail -n 12 "$QTLOG" >&2
+  drop_qt
+done
+[ -n "$QT_API_NAME" ] || { echo "no Qt WebEngine wheels for $ARCH (tried: $QT_BINDING). The window needs Qt; see the messages above." >&2; exit 1; }
+echo "== Qt binding: $QT_API_NAME"
 PYNAME="$(basename "$(ls -d "$APP"/python/lib/python3.[0-9]* | head -n 1)")"
 rm -rf "$APP/python/lib/$PYNAME/test" "$APP/python/lib/$PYNAME/idlelib" "$APP/python/lib/$PYNAME/turtledemo"
 find "$APP" -name "__pycache__" -prune -exec rm -rf {} +
@@ -68,11 +93,13 @@ for d in rt preview ipa webui demo; do [ -d "$ROOT/$d" ] && cp -R "$ROOT/$d" "$A
 find "$APP/app" -name "__pycache__" -prune -exec rm -rf {} +
 
 # ---- 4. launchers, icon, installer for the menu entry
+echo "$QT_API_NAME" > "$APP/qt-api"          # read by the launchers and AppRun: which Qt this build has
 cat > "$APP/pockettk-gui" <<'LAUNCH'
 #!/bin/sh
 # Starts the PocketTk window with the Python inside this folder.
 D="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 PYWEBVIEW_GUI=qt
+[ -f "$D/qt-api" ] && export QT_API="$(cat "$D/qt-api")"
 # QtWebEngine refuses to run as root without this
 [ "$(id -u)" = "0" ] && export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:-} --no-sandbox"
 exec "$D/python/bin/python3" "$D/app/pockettk_gui.py" "$@"
@@ -82,6 +109,7 @@ cat > "$APP/pockettk" <<'LAUNCH'
 # The command line tool with the same Python:   ./pockettk build app.py   /   ./pockettk doctor   /   ./pockettk gui
 D="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 PYWEBVIEW_GUI=qt
+[ -f "$D/qt-api" ] && export QT_API="$(cat "$D/qt-api")"
 exec "$D/python/bin/python3" "$D/app/pockettk.py" "$@"
 LAUNCH
 chmod 755 "$APP/pockettk-gui" "$APP/pockettk"
@@ -92,7 +120,16 @@ chmod 755 "$APP/install.sh"
 # ---- 5. does the finished app work? (no window opens)
 echo "== self-test"
 POCKETTK_GUI_SELFTEST=1 "$APP/pockettk-gui"
-QT_QPA_PLATFORM=offscreen "$PY" -I -c "from PyQt6 import QtWebEngineWidgets, QtWebEngineCore; print('Qt WebEngine imports')"
+qt_diagnose() {   # the usual reason this fails on a fresh machine: a system library Chromium needs is not installed
+  echo "---- Qt WebEngine does not start on this $ARCH system ----" >&2
+  for so in $(find "$APP/python" \( -name 'libQt6WebEngineCore.so*' -o -name 'QtWebEngineProcess' \) -type f | head -n 2); do
+    echo "libraries $so needs and cannot find:" >&2
+    ldd "$so" 2>&1 | grep "not found" >&2 || echo "  (none)" >&2
+  done
+  echo "On Debian/Ubuntu: sudo apt install libminizip1t64 libnss3 libasound2t64 libxkbcommon-x11-0 libxcb-cursor0 (libminizip1 / libasound2 on releases before 24.04)." >&2
+}
+QT_API="$QT_API_NAME" QT_QPA_PLATFORM=offscreen "$PY" -I -c "import qtpy; from qtpy import QtWebEngineWidgets, QtWebEngineCore; print('Qt WebEngine imports (' + qtpy.API_NAME + ')')" \
+  || { qt_diagnose; exit 1; }
 "$APP/pockettk" version
 
 # ---- 6. the archive
@@ -114,6 +151,7 @@ if [ "${APPIMAGE:-1}" != "0" ]; then
   mkdir -p "$AD"
   cp -a "$APP/python" "$APP/app" "$AD/"
   cp "$HERE/AppRun" "$AD/AppRun"; chmod 755 "$AD/AppRun"
+  cp "$APP/qt-api" "$AD/qt-api"
   cp "$HERE/pockettk.desktop" "$AD/pockettk.desktop"
   cp "$APP/pockettk.png" "$AD/pockettk.png"
   ln -s pockettk.png "$AD/.DirIcon"

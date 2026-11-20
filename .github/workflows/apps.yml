@@ -1,6 +1,6 @@
 # Builds the PocketTk window apps (Mac .dmg for Apple Silicon and Intel, Windows installer + zip, Linux .tar.gz for x86_64 and
 # aarch64), runs the tests, and attaches the files to a release.
-# Push a tag like v4.1.0 to make a release (v4.1.0-rc1 makes a pre-release); run it by hand (Actions > Desktop apps > Run workflow) to just get the files.
+# Push a tag like v4.1.1 to make a release (v4.1.1-rc1 makes a pre-release); run it by hand (Actions > Desktop apps > Run workflow) to just get the files.
 name: Desktop apps
 
 on:
@@ -22,7 +22,6 @@ jobs:
         with: { node-version: "20" }
       - run: python -m unittest tests.test_deps tests.test_gui tests.test_packaging tests.test_termux_connect
       - run: node tests/test_core.js && node tests/test_shell.js
-      - run: node tests/test_core.js
 
   dmg:
     needs: test
@@ -31,8 +30,8 @@ jobs:
       matrix:
         include:
           - { runner: macos-15, arch: arm64 }
-          # Intel runner (macos-13 was retired by GitHub). If this label goes away too, build x86_64 on an Intel Mac with:
-          # packaging/macos/build_app.sh x86_64
+          # The Intel runner. (macos-13 was retired; macos-15-intel is the one GitHub still offers.) If this label is ever
+          # retired too, build x86_64 on an Intel Mac with: packaging/macos/build_app.sh x86_64
           - { runner: macos-15-intel, arch: x86_64 }
     runs-on: ${{ matrix.runner }}
     steps:
@@ -78,13 +77,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: ubuntu-latest, arch: x86_64 }
-          - { runner: ubuntu-24.04-arm, arch: aarch64 }
+          - { runner: ubuntu-latest, arch: x86_64, experimental: false }
+          # aarch64: Qt WebEngine wheels are not available for every Python/Qt combination on arm64. If this one fails it
+          # must not stop the release of the other apps (the failure is still shown). Remove "experimental" once it is green.
+          - { runner: ubuntu-24.04-arm, arch: aarch64, experimental: true }
     runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - uses: actions/checkout@v4
+      # The arm64 runner image has fewer of these preinstalled than the x86_64 one, so name them all.
       - name: Libraries Qt WebEngine needs for the self-test
-        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-render-util0 libnss3 libasound2t64 libopus0 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libdbus-1-3 libfontconfig1
+        run: >
+          sudo apt-get update && sudo apt-get install -y
+          libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libnss3 libnspr4 libasound2t64
+          libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libdbus-1-3 libfontconfig1
+          libglib2.0-0t64 libgbm1 libxshmfence1 libminizip1t64
       - name: Build the app and the .tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +112,7 @@ jobs:
         with: { pattern: "PocketTk-*", merge-multiple: true, path: dist }
       - uses: softprops/action-gh-release@v2
         with:
-          prerelease: ${{ contains(github.ref_name, '-') }}      # v4.1.0-rc1 is a pre-release, v4.1.0 is not
+          prerelease: ${{ contains(github.ref_name, '-') }}      # v4.1.1-rc1 is a pre-release, v4.1.1 is not
           files: |
             dist/*.dmg
             dist/*.zip

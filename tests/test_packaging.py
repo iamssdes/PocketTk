@@ -75,6 +75,26 @@ class Packaging(unittest.TestCase):
         self.assertTrue(os.access(os.path.join(HERE, "packaging", "linux", "AppRun"), os.X_OK))
         self.assertIn("AppImage", read(".github", "workflows", "apps.yml"))
 
+    def test_ci_uses_runner_labels_that_exist(self):
+        yml = read(".github", "workflows", "apps.yml")
+        self.assertNotIn("runner: macos-13", yml, "macos-13 was retired by GitHub")
+        self.assertNotIn("runner: macos-14", yml)
+        self.assertIn("macos-15-intel", yml)
+        self.assertIn("{ runner: macos-15, arch: arm64 }", yml)
+
+    def test_arm_linux_cannot_block_the_release(self):
+        yml = read(".github", "workflows", "apps.yml")
+        self.assertIn("continue-on-error: ${{ matrix.experimental }}", yml)
+        self.assertIn("ubuntu-24.04-arm, arch: aarch64, experimental: true", yml)
+        self.assertIn("ubuntu-latest, arch: x86_64, experimental: false", yml)
+
+    def test_linux_build_falls_back_to_pyside6_and_says_why(self):
+        sh = read("packaging", "linux", "build_app.sh")
+        for k in ("--only-binary=:all:", "PySide6", "qt-api", "qt_diagnose", "QT_BINDING"):
+            self.assertIn(k, sh)
+        self.assertLess(sh.index("PyQt6 PyQt6-WebEngine"), sh.index("pipi --only-binary=:all: PySide6"))
+        self.assertIn("qt-api", read("packaging", "linux", "AppRun"))
+
     def test_every_script_the_apps_copy_exists(self):
         for f in ("windows/build_app.ps1", "linux/build_app.sh", "macos/build_app.sh"):
             text = read("packaging", *f.split("/"))
