@@ -114,19 +114,44 @@ exec "$D/python/bin/python3" "$D/app/pockettk.py" "$@"
 LAUNCH
 chmod 755 "$APP/pockettk-gui" "$APP/pockettk"
 python3 "$ROOT/packaging/macos/make_icon.py" "$APP/pockettk.png" 256
-cp "$HERE/install.sh" "$HERE/READ ME FIRST.txt" "$APP/"
+cp "$HERE/install.sh" "$APP/"
 chmod 755 "$APP/install.sh"
+# the READ ME names the system libraries from the one list (packaging/linux/system-libs.txt), so it can never drift from CI
+LIBS="$(grep -v '^#' "$HERE/system-libs.txt" | grep -v '^$' | tr '\n' ' ' | sed 's/ $//')"
+sed "s|@LIBS@|$LIBS|" "$HERE/READ ME FIRST.txt" > "$APP/READ ME FIRST.txt"
 
 # ---- 5. does the finished app work? (no window opens)
 echo "== self-test"
 POCKETTK_GUI_SELFTEST=1 "$APP/pockettk-gui"
+deb_for() {       # deb_for libopus.so.0  ->  the Debian/Ubuntu 24.04 package that has it (nothing if it is not in the table)
+  case "$1" in
+    libopus.so.*) echo libopus0;;                         libminizip.so.*) echo libminizip1t64;;
+    libnss3.so|libnssutil3.so|libsmime3.so) echo libnss3;;   libnspr4.so) echo libnspr4;;
+    libasound.so.*) echo libasound2t64;;                  libxkbcommon-x11.so.*) echo libxkbcommon-x11-0;;
+    libxkbcommon.so.*) echo libxkbcommon0;;               libxcb-cursor.so.*) echo libxcb-cursor0;;
+    libxcb-icccm.so.*) echo libxcb-icccm4;;               libxcb-keysyms.so.*) echo libxcb-keysyms1;;
+    libxcb-shape.so.*) echo libxcb-shape0;;               libxcb-image.so.*) echo libxcb-image0;;
+    libxcb-render-util.so.*) echo libxcb-render-util0;;   libEGL.so.*) echo libegl1;;
+    libGL.so.*) echo libgl1;;                             libgbm.so.*) echo libgbm1;;
+    libdbus-1.so.*) echo libdbus-1-3;;                    libfontconfig.so.*) echo libfontconfig1;;
+    libXcomposite.so.*) echo libxcomposite1;;             libXdamage.so.*) echo libxdamage1;;
+    libXrandr.so.*) echo libxrandr2;;                     libXtst.so.*) echo libxtst6;;
+    libxkbfile.so.*) echo libxkbfile1;;                   libxshmfence.so.*) echo libxshmfence1;;
+  esac
+}
 qt_diagnose() {   # the usual reason this fails on a fresh machine: a system library Chromium needs is not installed
   echo "---- Qt WebEngine does not start on this $ARCH system ----" >&2
+  gone=""
   for so in $(find "$APP/python" \( -name 'libQt6WebEngineCore.so*' -o -name 'QtWebEngineProcess' \) -type f | head -n 2); do
     echo "libraries $so needs and cannot find:" >&2
-    ldd "$so" 2>&1 | grep "not found" >&2 || echo "  (none)" >&2
+    miss="$(ldd "$so" 2>&1 | grep "not found" || true)"
+    if [ -n "$miss" ]; then echo "$miss" >&2; gone="$gone $miss"; else echo "  (none)" >&2; fi
   done
-  echo "On Debian/Ubuntu: sudo apt install libminizip1t64 libnss3 libasound2t64 libxkbcommon-x11-0 libxcb-cursor0 (libminizip1 / libasound2 on releases before 24.04)." >&2
+  pk=""
+  for l in $(echo "$gone" | tr ' ' '\n' | grep '\.so' | sort -u); do p="$(deb_for "$l")"; [ -n "$p" ] && pk="$pk $p"; done
+  [ -n "$pk" ] && echo "Missing here. On Debian/Ubuntu 24.04: sudo apt install$pk" >&2
+  echo "Everything Qt WebEngine usually needs (packaging/linux/system-libs.txt): sudo apt install $(grep -v '^#' "$HERE/system-libs.txt" | grep -v '^$' | tr '\n' ' ')" >&2
+  echo "If a library is missing that is not in that list, add it to the list: it is the only place CI and the README take it from." >&2
 }
 QT_API="$QT_API_NAME" QT_QPA_PLATFORM=offscreen "$PY" -I -c "import qtpy; from qtpy import QtWebEngineWidgets, QtWebEngineCore; print('Qt WebEngine imports (' + qtpy.API_NAME + ')')" \
   || { qt_diagnose; exit 1; }

@@ -13,7 +13,7 @@ Installing on a phone goes through adb (USB debugging or Wireless debugging); no
 import os, re, sys, shutil, subprocess, tempfile, zlib, glob, time, json, platform, argparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "PocketTk v4.1.1"
+VERSION = "PocketTk v4.1.2"
 PKG_PREFIX = "pockettk.ssdes."
 LEGACY_PREFIXES = ("tkdroid.ssdes.", "tkdroid.palalgon.", "tkdroid.molt.", "apple.app.")
 WIN = os.name == "nt"

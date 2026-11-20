@@ -114,5 +114,70 @@ class Packaging(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(_HOME, ".pockettk", "gui.log")))
 
 
+class CiFailuresStayFixed(unittest.TestCase):
+    """The two failures of the Desktop apps workflow: Windows "self-test failed" and Linux arm64 "libopus.so.0 not found"."""
+
+    def test_the_window_starts_under_python_dash_I(self):
+        # `python -I` leaves the script's folder off sys.path; the Windows build used it for the self-test, and
+        # `import pockettk` crashed before anything ran. The window must get past its imports either way.
+        env = dict(os.environ, POCKETTK_GUI_SELFTEST="1", POCKETTK_HOME=_HOME, HOME=_HOME, USERPROFILE=_HOME)
+        r = subprocess.run([sys.executable, "-I", os.path.join(HERE, "pockettk_gui.py")], cwd=tempfile.gettempdir(),
+                           capture_output=True, text=True, env=env)
+        self.assertNotIn("ModuleNotFoundError", r.stderr, r.stderr)
+        self.assertIn("selftest:", r.stdout, r.stdout + r.stderr)          # it ran (ok, or a PROBLEM line such as no pywebview)
+
+    def test_windows_selftest_starts_the_app_the_way_users_do(self):
+        ps1 = read("packaging", "windows", "build_app.ps1")
+        a = ps1.index("# ---- 5.")
+        step = ps1[a:ps1.index("# ---- 6.")]
+        launch = [l for l in step.splitlines() if "pockettk_gui.py" in l and not l.lstrip().startswith("#")]
+        self.assertEqual(len(launch), 1, launch)
+        self.assertNotRegex(launch[0], r"\s-I\b", "the window is never started with -I, so the self-test must not be")
+        for env in ("POCKETTK_GUI_SELFTEST", "PYTHONNOUSERSITE"):          # the launcher (PocketTk.cmd) sets PYTHONNOUSERSITE too
+            self.assertIn(env, step)
+        self.assertIn("PYTHONNOUSERSITE", ps1[:a])
+        self.assertIn("exit code", step, "the failure message should say how it failed")
+
+    def test_system_libraries_are_named_in_one_place(self):
+        lst = read("packaging", "linux", "system-libs.txt")
+        pk = [l.strip() for l in lst.splitlines() if l.strip() and not l.startswith("#")]
+        self.assertEqual(len(pk), len(set(pk)), "duplicates in system-libs.txt")
+        for name in pk:
+            self.assertRegex(name, r"^[a-z0-9][a-z0-9.+-]+$")
+        for must in ("libopus0", "libminizip1t64", "libnss3", "libasound2t64", "libxcb-cursor0"):   # each one failed a real CI run or user
+            self.assertIn(must, pk)
+        for f in (".github/workflows/apps.yml", ".github/workflows/desktop-test.yml"):
+            y = read(*f.split("/"))
+            self.assertIn("system-libs.txt", y, f + " must install the list, not a copy of it")
+            self.assertNotIn("libasound2t64", y, f + " still has its own copy of the library list")
+        readme = read("packaging", "linux", "READ ME FIRST.txt")
+        self.assertIn("@LIBS@", readme)
+        sh = read("packaging", "linux", "build_app.sh")
+        self.assertIn("system-libs.txt", sh)
+        self.assertIn("@LIBS@", sh)
+        self.assertNotIn("libasound2t64 libxkbcommon-x11-0 libxcb-cursor0 (", sh, "the hint must come from the list")
+
+    def test_linux_hint_names_the_missing_library_from_ldd(self):
+        sh = read("packaging", "linux", "build_app.sh")
+        funcs = "\n".join(re.search(r"^%s\(\) \{.*?^\}" % n, sh, re.S | re.M).group(0) for n in ("deb_for", "qt_diagnose"))
+        d = tempfile.mkdtemp(prefix="pk-ldd-")
+        os.makedirs(os.path.join(d, "bin"))
+        os.makedirs(os.path.join(d, "APP", "python"))
+        open(os.path.join(d, "APP", "python", "libQt6WebEngineCore.so.6"), "w").close()
+        ldd = os.path.join(d, "bin", "ldd")
+        with open(ldd, "w") as f:                  # what the failing CI run printed
+            f.write("#!/bin/sh\nprintf '\\tlibopus.so.0 => not found\\n\\tlibc.so.6 => /lib/libc.so.6 (0x1)\\n'\n")
+        os.chmod(ldd, 0o755)
+        script = "ARCH=aarch64; APP=%s; HERE=%s\n%s\nqt_diagnose\nfor l in libminizip.so.1 libasound.so.2 libnope.so.1; do echo \"$l=$(deb_for $l)\"; done\n" % (
+            os.path.join(d, "APP"), os.path.join(HERE, "packaging", "linux"), funcs)
+        r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=dict(os.environ, PATH=os.path.join(d, "bin") + os.pathsep + os.environ["PATH"]))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("sudo apt install libopus0", r.stderr)                  # exactly the missing one, spelled out
+        self.assertIn("libopus0", r.stderr.split("Everything Qt WebEngine usually needs")[1])    # and the whole list includes it
+        self.assertIn("libminizip.so.1=libminizip1t64", r.stdout)
+        self.assertIn("libasound.so.2=libasound2t64", r.stdout)
+        self.assertIn("libnope.so.1=\n", r.stdout + "\n")                    # unknown libraries map to nothing, no error
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -86,11 +86,13 @@ set PYTHONDONTWRITEBYTECODE=1
 Copy-Item (Join-Path $Here "READ ME FIRST.txt") $Stage
 
 # ---- 5. does the finished app work? (no window opens)
+# Start it the way PocketTk.cmd and the shortcut do (same environment, no -I), so this tests what people will run.
 Write-Host "== self-test"
-$env:POCKETTK_GUI_SELFTEST = "1"
-& (Join-Path $Stage "python\python.exe") -I (Join-Path $app "pockettk_gui.py")
-if ($LASTEXITCODE -ne 0) { throw "self-test failed" }
-Remove-Item Env:\POCKETTK_GUI_SELFTEST
+$env:POCKETTK_GUI_SELFTEST = "1"; $env:PYTHONNOUSERSITE = "1"; $env:PYTHONDONTWRITEBYTECODE = "1"
+& (Join-Path $Stage "python\python.exe") (Join-Path $app "pockettk_gui.py")
+$selfTest = $LASTEXITCODE
+Remove-Item Env:\POCKETTK_GUI_SELFTEST, Env:\PYTHONNOUSERSITE, Env:\PYTHONDONTWRITEBYTECODE
+if ($selfTest -ne 0) { throw "self-test failed (exit code $selfTest): the traceback or the PROBLEM lines just above say why" }
 & $py -I (Join-Path $app "pockettk.py") version
 
 # ---- 6. the zip and the installer

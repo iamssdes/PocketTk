@@ -1,0 +1,30 @@
+# The system libraries Qt WebEngine (Chromium) needs, Ubuntu 24.04 names (one per line).
+# This is the ONE place that names them: .github/workflows/apps.yml and desktop-test.yml install this list, the build script
+# puts it into "READ ME FIRST.txt" and into its hint when the self-test fails. Older releases: libasound2, libminizip1 and
+# libglib2.0-0 instead of the t64 names. When the Linux self-test says "lib....so: cannot open shared object file", add
+# the package here (and nowhere else).
+libegl1
+libgl1
+libxkbcommon0
+libxkbcommon-x11-0
+libxcb-cursor0
+libxcb-icccm4
+libxcb-image0
+libxcb-keysyms1
+libxcb-render-util0
+libxcb-shape0
+libnss3
+libnspr4
+libasound2t64
+libxcomposite1
+libxdamage1
+libxrandr2
+libxtst6
+libxkbfile1
+libdbus-1-3
+libfontconfig1
+libglib2.0-0t64
+libgbm1
+libxshmfence1
+libminizip1t64
+libopus0

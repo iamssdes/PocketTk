@@ -14,6 +14,12 @@ publishes every public name of the Api object to the web page.
 """
 import os, sys, re, json, time, signal, threading, subprocess, contextlib, platform
 
+# `python -I` (isolated mode) leaves this script's own folder off sys.path, and then `import pockettk` fails before anything
+# runs. Put the folder there ourselves, so the window starts however Python was started.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
 import pockettk as tk
 import pockettk_deps as deps
 
