@@ -33,7 +33,7 @@ jobs:
           - { runner: macos-14, arch: arm64 }
           # An Intel runner. If GitHub retires this label, use whichever Intel macOS label exists, or build x86_64 on an
           # Intel Mac with: packaging/macos/build_app.sh x86_64
-          - { runner: macos-13, arch: x86_64 }
+          - { runner: macos-15-intel, arch: x86_64 }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
