@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PocketTk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root, [data-theme="dusk"] { --bg: #1b2140; --fg: #f3ede1; --dim: #8d93b0; --accent: #e8744f; --good: #8fd5a6; --warn: #f2a93b; --bad: #ff7b6b; --sel: #3a4372; }
+[data-theme="green"] { --bg: #0b130d; --fg: #c8f7d0; --dim: #5f8f6c; --accent: #3ddc84; --good: #7dff9b; --warn: #e6c34a; --bad: #ff6b5b; --sel: #1d4a2b; }
+[data-theme="paper"] { --bg: #f6f2e8; --fg: #26233a; --dim: #7a7690; --accent: #c4502b; --good: #2f7d4f; --warn: #9a6700; --bad: #b3261e; --sel: #ddd3bd; }
+[data-theme="mono"] { --bg: #000; --fg: #dddddd; --dim: #888888; --accent: #ffffff; --good: #dddddd; --warn: #dddddd; --bad: #ffffff; --sel: #444444; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+body { font: 14px/1.5 "JetBrains Mono", "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+::selection { background: var(--sel); }
+#screen { height: 100%; overflow-y: auto; padding: 14px 18px 40px; cursor: text; }
+.ln { white-space: pre-wrap; word-break: break-word; min-height: 1.5em; }
+.ps { color: var(--dim); }
+.ps .cwd { color: var(--accent); }
+.dim { color: var(--dim); } .good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); } .acc { color: var(--accent); }
+[data-theme="mono"] .bad { font-weight: 700; }
+.link { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.link:hover { color: var(--accent); }
+#live { color: var(--dim); white-space: pre-wrap; }
+#promptline { display: flex; align-items: baseline; }
+#ps { white-space: pre; flex: none; }
+#inp { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--fg); font: inherit; padding: 0; margin: 0; caret-color: var(--accent); caret-shape: block; }
+.busy #promptline { height: 0; overflow: hidden; opacity: 0; }
+.logo { display: block; width: 64px; height: 64px; margin: 4px 0 6px; }
+#drop { position: fixed; inset: 10px; border: 2px dashed var(--accent); border-radius: 6px; display: none; align-items: center; justify-content: center; color: var(--accent); background: color-mix(in srgb, var(--bg) 82%, transparent); pointer-events: none; }
+#drop.on { display: flex; }
+</style>
+</head>
+<body>
+<div id="screen">
+  <div id="out" role="log" aria-live="polite"></div>
+  <div id="live" aria-hidden="true"></div>
+  <div id="promptline"><span id="ps"></span><input id="inp" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="command"></div>
+</div>
+<div id="drop">drop a .py file to use it</div>
+<script>
+/*@CORE@*/
+</script>
+<script>
+/*@SHELL@*/
+</script>
+<script>
+/*@TERM@*/
+</script>
+</body>
+</html>

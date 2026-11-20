@@ -19,7 +19,7 @@ else
   WORK="$HOME/.pockettk/work"; KS_DIR="$HOME/.pockettk"
 fi
 OUT_DIR=/sdcard/Download/PocketTk
-VERSION="PocketTk v4.0.0"
+VERSION="PocketTk v4.1.0"
 EDITION=full          # make_demo.py sets this to "demo" (PocketTk Demo), make_consumer.py to "consumer" (PocketTk Consumer)
 EDITION_TAG=""; [ "$EDITION" = demo ] && EDITION_TAG=" Demo"; [ "$EDITION" = consumer ] && EDITION_TAG=" Consumer"
 PKG_PREFIX="pockettk.ssdes."
@@ -472,7 +472,10 @@ cmd_install() {
 }
 
 # internal (root): pockettk _grant PKG
-cmd__grant() { grant_overlay "$1"; }
+cmd__grant() {
+  grant_overlay "$1"
+  pm grant "$1" com.termux.permission.RUN_COMMAND >/dev/null 2>&1      # apps made with #use: termux-connect
+}
 
 # internal (root): pockettk _launch PKG [fg|closed APK BUILDDIR]
 cmd__launch() {
@@ -1305,6 +1308,7 @@ cmd_set_email() {
 }
 
 case "$1" in
+  gui|make-gui|makegui) die "PocketTk has no window on Android: use the commands (pockettk help). The window apps are for macOS, Windows and Linux.";;
   set-email|setemail) shift; cmd_set_email "$@";;
   update)  shift; cmd_update "$@";;
   update-all|updateall) shift; cmd_update_all "$@";;

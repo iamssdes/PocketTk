@@ -1,0 +1,13 @@
+PocketTk
+========
+
+1. Drag PocketTk into the Applications folder.
+2. Open it from Applications.
+
+If macOS says it can't verify the app (this build is not notarized by Apple):
+  - macOS 14 or older: right-click PocketTk, choose Open, then Open again.
+  - macOS 15 or newer: try to open it once, then go to
+    System Settings > Privacy & Security, scroll down, and click "Open Anyway".
+
+The first time PocketTk starts it installs what it needs (a Java JDK and Google's Android build tools) into
+~/.pockettk. You are asked to accept Google's Android SDK license; no administrator password is needed.

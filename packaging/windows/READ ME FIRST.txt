@@ -1,0 +1,14 @@
+PocketTk
+========
+
+Installer: run PocketTk-<version>-windows-<x64|arm64>-setup.exe, then start PocketTk from the Start menu.
+Portable zip: unzip anywhere, double-click PocketTk.cmd. (pockettk.cmd is the command line tool.)
+
+If Windows SmartScreen says "Windows protected your PC" (this build is not code-signed): click "More info", then "Run anyway".
+
+The window is drawn by Microsoft Edge WebView2. Windows 11 and current Windows 10 have it. If the window does not open,
+install the "Evergreen Runtime" from https://developer.microsoft.com/microsoft-edge/webview2/ and start PocketTk again.
+(Errors are written to %USERPROFILE%\.pockettk\gui.log.)
+
+The first time PocketTk starts it installs what it needs (a Java JDK and Google's Android build tools) into
+%USERPROFILE%\.pockettk. You are asked to accept Google's Android SDK license; no administrator rights are needed.

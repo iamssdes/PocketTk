@@ -7,3 +7,6 @@ __pycache__/
 *.jks
 upload.pass
 .DS_Store
+
+dist/
+build/

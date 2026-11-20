@@ -1,4 +1,4 @@
-# PocketTk v4.0.0
+# PocketTk v4.1.0
 
 Turn a Python **tkinter** script into an installable Android APK (or, on a Mac, an iOS .ipa). Runs in Termux (rooted or not, as a KernelSU module or on its own), or on Windows, Linux and macOS.
 (Python is transpiled to Java, or to Swift for iOS; there is no embedded CPython.)
@@ -9,6 +9,7 @@ Turn a Python **tkinter** script into an installable Android APK (or, on a Mac, 
 Made by SSDES. It started as a fun idea.
 
 ## Commands (run in Termux as a normal user, not tsu)
+These still work for anyone who likes a terminal; the window runs the same commands.
     pockettk run app.py [--dispose] [--logs] [--debug] [--icon IMG] [--id NAME]   build + install + launch
     pockettk build app.py [-n NAME] [-p PKG] [-o OUT.apk] [--icon IMG] [--id NAME] [--debug] [-i] [-k]
     pockettk build app.py --aab [--id NAME] [--target-sdk N] [--keystore FILE [--ks-alias A]]   Android App Bundle for Google Play
@@ -22,6 +23,7 @@ Made by SSDES. It started as a fun idea.
     pockettk check app.py                      transpile only, show warnings
     pockettk install FILE.apk [PKG]
     pockettk list | uninstall [PKG|app.py|--all] | demo | doctor
+    pockettk gui                               the same thing as a window on the phone (see "The window on Android")
     pockettk help [--brief]                    --brief: what PocketTk is and how to use it, in a few lines
 PocketTk was called **TkDroid** before (and ApkApple before that). The old names `tkdroid`, `apkapple` and `apple` are **deprecated**: they still work for now but print a warning and will be removed in a future version. Use `pockettk`. First run: `pockettk doctor`. `pockettk demo` writes example scripts.
 
@@ -42,6 +44,32 @@ The KernelSU module above works as before. Patch 5 added `pockettk.py`, a stdlib
     python pockettk.py preview app.py [--width W] [--height H] [--dpi D] [--cpu 5-100]
     python pockettk.py ids | logs | check | version
 Linux and macOS: `./pockettk ...`   Windows: `pockettk.cmd ...`. On a Mac install a JDK first (`brew install openjdk`; PocketTk also finds `/usr/libexec/java_home` and the Homebrew folders). The Mac port is untested on real hardware. With a phone attached over adb, `run`/`update` install and launch it; without one they open the preview.
+
+### The window app (no terminal): macOS, Windows, Linux
+The same window on all three systems, and it is a terminal: a prompt with history and Tab completion, and our own commands.
+
+    ~ $ pick                                  choose your script (system file chooser), or drop a .py on the window
+    ~ $ build notes.py --id notes --small     transpile and export an APK
+    ~ $ build notes.py --aab --id notes       a Google Play bundle (--keystore FILE to sign with your key)
+    ~ $ check | preview | install | devices | update notes | apps | doctor | setup | cd | ls | reveal | outdir | theme | help
+
+`help` lists the commands, `help build` explains the options. Tab completes commands, options, app ids and paths (a second Tab lists the choices); Up/Down is the history; Ctrl+C stops a build; Ctrl+L clears. Paths with spaces go in quotes. `theme` switches colours (dusk, green, paper, mono). Builds go to `~/PocketTk` (`outdir` changes it) and the path in the output is clickable (or type `reveal`).
+
+| System | File | Install |
+|---|---|---|
+| macOS (Apple Silicon, Intel) | `PocketTk-<version>-<arch>.dmg` | open it, drag **PocketTk** to Applications |
+| Windows 10/11 (x64) | `PocketTk-<version>-windows-x64-setup.exe` or `...-windows-x64.zip` | run the installer (no admin rights), or unzip and open `PocketTk.cmd` |
+| Linux (x86_64, aarch64) | `PocketTk-<version>-linux-<arch>.AppImage` | one file: make it executable (file manager: Properties > Permissions > Allow executing) and double-click. No terminal |
+| Linux, as an archive | `PocketTk-<version>-linux-<arch>.tar.gz` | unpack, run `./install.sh` (menu entry) or `./pockettk-gui` |
+
+- **Everything it needs is installed by the app itself.** Each package carries its own Python and pywebview. On the first start the window downloads a Java JDK (Eclipse Temurin) and Google's Android build tools into `~/.pockettk` (`%USERPROFILE%\.pockettk` on Windows), after you accept Google's Android SDK license in the window. No administrator password, nothing outside that folder. `doctor` shows what is installed and `setup` repeats the install. (The SDK cannot be bundled: its license has to be accepted by you.)
+- **No terminal, no network port.** The page is shown in a native window (pywebview) and talks to the app through its built-in bridge; there is no local web server. Builds run as a child process of `pockettk.py build ...`, so the log is what the terminal would show, and Ctrl+C (or `cancel`) stops the whole build.
+- **Open the file chooser straight away:** `pockettk gui --pick`, or `pockettk gui app.py` to start with a file chosen. (The packages also contain a command line tool: `pockettk.cmd` on Windows, `./pockettk` on Linux.)
+- **macOS first open:** signed ad hoc, not notarized. macOS 14 or older: right-click the app > Open. macOS 15 or newer: open it once, then System Settings > Privacy & Security > **Open Anyway**. Apple Silicon: if Google's `aapt2` does not start, type `rosetta` to install it.
+- **Windows:** not code-signed, so SmartScreen says "Windows protected your PC": More info > Run anyway. The window uses Microsoft Edge WebView2 (in Windows 11 and current Windows 10; otherwise install the Evergreen Runtime from Microsoft). Errors go to `%USERPROFILE%\.pockettk\gui.log`.
+- **Linux:** the window uses Qt WebEngine from inside the package (about 250 MB, works on any common distribution). A very bare system may need a few desktop libraries; `READ ME FIRST.txt` lists them for Debian/Ubuntu. With your own Python you can also run `pip install pywebview` (GTK/WebKit2GTK via `python3-gi gir1.2-webkit2-4.1`, or `pywebview[qt]`) and `pockettk gui`.
+- **Building the packages:** `packaging/macos/build_app.sh`, `packaging\windows\build_app.ps1` (zip, plus the installer when Inno Setup is installed), `packaging/linux/build_app.sh`, each on its own system, or the GitHub Actions workflow `.github/workflows/apps.yml` (builds all of them and attaches them to a `v*` release). Tests: `python -m unittest tests.test_deps tests.test_gui tests.test_packaging tests.test_termux_connect`, `node tests/test_shell.js` and `node tests/test_core.js`.
+- **Not tested on real systems:** the windows and the packages were never run on a real Mac, Windows or Linux desktop. The installer, the build scripts and the Python side are tested here with stubs only. Android (Termux) has no window yet.
 
 ### Google Play bundle (`--aab`)
 Works like the phone version: the `.aab` is signed with an upload key kept in `~/.pockettk/upload.keystore` (password in `upload.pass`; made on first use, **back both up**), or with your own `--keystore` (password from `POCKETTK_KS_PASS` or a prompt). Target SDK defaults to 36 for bundles. Every Play upload needs a higher version code, so build with `--id` so it counts up. It needs `bundletool` (`pockettk setup` downloads it, or put `bundletool-all-VERSION.jar` at `~/.pockettk/bundletool.jar`, or set `BUNDLETOOL`) and the JDK's `jarsigner`. An `.aab` can't be installed on a phone. Tested against a stand-in bundletool only, not Google's.
@@ -64,7 +92,7 @@ Signing needs an Apple Developer account: a free Apple ID gives a profile that e
 **Status:** written without access to a Mac, so it has never been compiled. The first run on a Mac may hit Swift compile errors in the runtime: if so, send the `swiftc` output.
 
 ## Directives (comments at the top of the script)
-    #use: fppe, dpooa, filepick, datasaving, audio, builtin-editing     (any number, comma separated)
+    #use: fppe, dpooa, filepick, datasaving, audio, termux-connect, builtin-editing     (any number, comma separated)
     #builtins: version-label: disable
     #dpooa: draggable
     #audio: dQw4w9WgXcQ
@@ -115,6 +143,17 @@ Signing needs an Apple Developer account: a free Apple ID gives a profile that e
   Sources can be mixed: `#playlist: dQw4w9WgXcQ https://example.com/a.mp3 /sdcard/Music/b.m4a "my songs/c.ogg"`. Relative paths are looked up next to the script. `#audio:` alone also switches audio on, so `#use: audio` is optional.
 
   **How it works:** tracks are fetched when you build and bundled inside the APK, so the app plays them offline and needs no permissions. Downloads are cached in `~/.pockettk/audio-cache`, so later builds/updates are fast. Direct audio links are downloaded with Python; YouTube and other page links need `yt-dlp` plus a JavaScript runtime in Termux (YouTube requires one): `pkg install yt-dlp nodejs` (or `pip install -U "yt-dlp[default]"`). `pockettk doctor` shows whether they are found. If a track cannot be fetched the build still finishes, with a warning that says why. Music pauses when the app goes to the background and resumes when you come back (dpooa overlays keep playing until closed). Large playlists make a large APK (about 4 MB per song).
+
+- **Run commands in Termux (`#use: termux-connect`):** the app may `import termux` and run commands inside Termux, then get their output back. There is no server and no open port: each call is one `RUN_COMMAND` intent to Termux and Termux answers with a result.
+
+        #use: termux-connect
+        import termux
+        def done(code, out, err):
+            print(code, out)
+        if termux.state() == "ok":
+            termux.run(["pockettk", "ids"], done)
+
+  `termux.state()` is `"ok"`, `"missing"` (Termux is not installed) or `"permission"` (not allowed yet: `termux.ask()` shows Android's question). `termux.run(args, callback)` runs `args[0]` (a command name from Termux's bin folder, or an absolute path) with the rest as arguments, in Termux's home folder (`workdir="..."` changes that); `callback(exit_code, stdout, stderr)` runs when it ends, and `exit_code` is `-1` with the reason in `stderr` when it could not be started. Output is cut at about 100 000 characters by Termux. It needs the Termux app, `allow-external-apps = true` in `~/.termux/termux.properties` (add the line yourself, then run `termux-reload-settings`) and the permission to run commands in Termux (granted at install on a rooted phone or with adb, otherwise asked once). The directive adds that permission, a package query and a small result receiver to the app. Without `#use: termux-connect`, `import termux` is an error.
 
 ## Built-ins (on by default) and how to switch them off
 | name | what it does |
@@ -228,6 +267,10 @@ Audio: no live streams or YouTube playlist links (list the video ids with `#play
 Treeview; images/PhotoImage; askdirectory returns the app's files dir. Subclassing built-in types (dict, list...) is not supported. Exception classes with their own methods/attributes are only partly supported. sqlite3 named parameters (`:name`) and row factories are not supported; `csv` dialects other than delimiter/quotechar/quoting are ignored. `requests` is a minimal built-in; **pip packages cannot be used** (there is no embedded CPython).
 
 ## Tested on a real device
+`#use: termux-connect` (`import termux`) has not been tried on a phone yet: the transpiler output is tested on a desktop (`tests/test_termux_connect.py`), but the `RUN_COMMAND` call itself, the result broadcast and the permission question are written from Termux's documented interface and are the part to watch on a real phone.
 All features (version label and builtin switches, datareset and its confirmation dialog, audio, overlay permission, native file picker, dispose watcher and the runtime's dexing) were tested on a real phone, the author's own. Results may vary depending on your device's age, Android version and root status. Report anything odd with `pockettk logs -e`.
+The log panel and `update --debug` / `revert` / `help --brief` were added after that testing: the generated code, the shell flow (with stubs) and the version-code patching were checked on a desktop, not yet on a phone.
 
-**Anything on desktop has NOT BEEN TESTED. EVER.** Report any errors with your PocketTk if you are on desktop.
+v3.1.0 (Notebook tabs, Menu, colorchooser, classes, generators, decorators, bytes, new libraries) was checked on a desktop with stubs and compared with CPython; none of it has been tried on a phone yet. sqlite3 and the Menu/Notebook/colorchooser look in particular are untested on a device.
+The small version label now reads `<app version>, Built With PocketTk <version>`.
+v3.1.2 (the About PocketTk link and page) has not been tried on a phone yet, including opening it from a dpooa floating window; the folder move on flash and the `update-all` package move are also untested on a device.

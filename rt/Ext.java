@@ -819,6 +819,7 @@ public final class Ext {
                 if (fn.equals("exit")) throw new Py.PyError("SystemExit", a.length > 0 && a[0] != null ? Py.str(a[0]) : "");
                 break;
             case "os": return osMod(fn, a);
+            case "termux": return Termux.call(fn, a);
             case "re": return reMod(fn, a);
             case "time": {
                 switch (fn) {

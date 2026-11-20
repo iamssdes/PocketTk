@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PocketTk
+Comment=Turn tkinter Python scripts into Android apps
+Exec=AppRun
+Icon=pockettk
+Terminal=false
+Categories=Development;
+StartupWMClass=pockettk

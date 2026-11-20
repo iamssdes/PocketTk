@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PocketTk">
+  <title>PocketTk</title>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#f3ede1"/>
+  <!-- phone peeking out of the pocket -->
+  <rect x="156" y="56" width="200" height="330" rx="40" fill="#222a4d"/>
+  <rect x="176" y="80" width="160" height="260" rx="22" fill="#f3ede1"/>
+  <!-- "Tk" on the screen -->
+  <g fill="none" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M190 124 H238 M214 124 V212" stroke="#222a4d"/>
+    <path d="M268 112 V212 M312 146 L268 176 M284 166 L314 212" stroke="#e8744f"/>
+  </g>
+  <!-- the pocket -->
+  <path d="M84 262 H428 V386 Q428 438 376 438 H136 Q84 438 84 386 Z" fill="#e8744f"/>
+  <path d="M106 288 H406" stroke="#f3ede1" stroke-width="5" stroke-linecap="round" stroke-dasharray="14 12" fill="none"/>
+</svg>

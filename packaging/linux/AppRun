@@ -1,0 +1,7 @@
+#!/bin/sh
+# Entry point of the AppImage: starts the PocketTk window with the Python inside the image.
+HERE="$(dirname "$(readlink -f "$0")")"
+export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 PYWEBVIEW_GUI=qt
+# QtWebEngine refuses to run as root without this
+[ "$(id -u)" = "0" ] && export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:-} --no-sandbox"
+exec "$HERE/python/bin/python3" "$HERE/app/pockettk_gui.py" "$@"

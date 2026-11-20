@@ -2,12 +2,15 @@
 # PocketTk for Termux WITHOUT root. Run once from the unzipped folder, as the normal Termux user:
 #     sh termux_setup.sh
 set -e
+export DEBIAN_FRONTEND=noninteractive      # never stop to ask a question: it must not wait for an answer
 D=$(cd "$(dirname "$0")" && pwd)
 echo "- installing the build tools (python, java, aapt2, apksigner, dx)"
-pkg update -y
-pkg install -y python openjdk-21 aapt2 apksigner dx termux-tools unzip curl
-echo "- installing the pockettk command"
-sh "$D/install_termux.sh" "$D"
+pkg update -y -o Dpkg::Options::=--force-confnew
+pkg install -y -o Dpkg::Options::=--force-confnew python openjdk-21 aapt2 apksigner dx termux-tools unzip curl android-tools
+if [ -f "$D/install_termux.sh" ]; then      # not there when this runs from the copy inside Termux (the command is already installed)
+  echo "- installing the pockettk command"
+  sh "$D/install_termux.sh" "$D"
+fi
 # android.jar (the Android API, needed to compile): copy yours to ~/storage/shared/PocketTk/android.jar, or let this fetch it
 if [ -z "$(ls "$HOME"/android-sdk/platforms/android-*/android.jar 2>/dev/null)" ] && [ ! -f /sdcard/PocketTk/android.jar ] && [ ! -f "$HOME/.pockettk/android.jar" ]; then
   echo "- fetching android.jar (about 65 MB, one time)"
@@ -21,4 +24,5 @@ if [ -z "$(ls "$HOME"/android-sdk/platforms/android-*/android.jar 2>/dev/null)" 
   fi
   rm -rf "$T"
 fi
-echo "- done. Try:  pockettk version   then   pockettk doctor"
+echo "- done."
+echo "  Try:  pockettk doctor"

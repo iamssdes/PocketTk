@@ -13,7 +13,7 @@ Installing on a phone goes through adb (USB debugging or Wireless debugging); no
 import os, re, sys, shutil, subprocess, tempfile, zlib, glob, time, json, platform, argparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "PocketTk v4.0.0"
+VERSION = "PocketTk v4.1.0"
 PKG_PREFIX = "pockettk.ssdes."
 LEGACY_PREFIXES = ("tkdroid.ssdes.", "tkdroid.palalgon.", "tkdroid.molt.", "apple.app.")
 WIN = os.name == "nt"
@@ -93,12 +93,40 @@ def sdk_roots():
     return [d for d in r if os.path.isdir(d)]
 
 
+def local_jdks():
+    """JDKs PocketTk downloaded itself (the window app does that on its first run) into ~/.pockettk/jdk."""
+    out = []
+    for d in sorted(glob.glob(os.path.join(KS, "jdk", "*")), reverse=True):
+        for cand in (os.path.join(d, "Contents", "Home"), d):
+            if os.path.isfile(os.path.join(cand, "bin", "javac" + EXE)):
+                out.append(cand)
+                break
+    return out
+
+
+def export_java_home():
+    """The SDK's d8 and apksigner scripts find Java through JAVA_HOME or PATH. Point both at the JDK we found,
+    so a JDK that PocketTk downloaded itself (and that is on no PATH) works too. Returns the JDK home or ""."""
+    javac = find_tool("javac")
+    if not javac:
+        return ""
+    home = os.path.dirname(os.path.dirname(os.path.realpath(javac)))
+    cur = os.environ.get("JAVA_HOME", "")
+    if not (cur and os.path.isfile(os.path.join(cur, "bin", "javac" + EXE))):
+        os.environ["JAVA_HOME"] = home
+    jb = os.path.join(os.environ["JAVA_HOME"], "bin")
+    if jb not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = jb + os.pathsep + os.environ.get("PATH", "")
+    return os.environ["JAVA_HOME"]
+
+
 def java_homes():
     """Where a JDK may live: JAVA_HOME, and on a Mac the places Homebrew and the system put it (a Mac's /usr/bin/java
     is only a stub that fails when no JDK is installed, so it must not be picked blindly)."""
     r = []
     if os.environ.get("JAVA_HOME"):
         r.append(os.environ["JAVA_HOME"])
+    r += local_jdks()
     if platform.system() == "Darwin":
         try:
             o = subprocess.run(["/usr/libexec/java_home"], capture_output=True, text=True, timeout=10)
@@ -192,6 +220,7 @@ class Tools:
         self.signjar = "" if self.signer else find_lib("apksigner.jar")
         if need_sign and not (self.signer or self.signjar):
             die("apksigner not found: run: pockettk setup  (or: pockettk doctor)")
+        export_java_home()
 
 
 # ---------------------------------------------------------------- runtime (rt/*.java) compiled once
@@ -741,6 +770,9 @@ def main(argv=None):
     pr = sp.add_parser("preview"); pr.add_argument("script"); pr.add_argument("-n", "--name"); pr.add_argument("-k", "--keep", action="store_true"); pv_args(pr)
     ck = sp.add_parser("check"); ck.add_argument("script")
     sp.add_parser("ids"); sp.add_parser("doctor"); sp.add_parser("setup"); sp.add_parser("version")
+    gu = sp.add_parser("gui", help="open the PocketTk window (file picker, build, setup) - no terminal needed")
+    gu.add_argument("script", nargs="?", help="a .py file to preselect")
+    gu.add_argument("--pick", action="store_true", help="open the file picker right away")
     lg = sp.add_parser("logs"); lg.add_argument("--id")
     a = ap.parse_args(argv)
     try:
@@ -748,6 +780,11 @@ def main(argv=None):
             ap.print_help(); return 0
         if a.cmd == "version":
             print(VERSION); return 0
+        if a.cmd == "gui":
+            if os.environ.get("TERMUX_VERSION") or os.path.isdir("/data/data/com.termux/files/usr"):
+                die("PocketTk has no window on Android: use the commands (pockettk help). The window apps are for macOS, Windows and Linux")
+            import pockettk_gui
+            return pockettk_gui.main(a.script, a.pick)
         if a.cmd == "doctor":
             return doctor()
         if a.cmd == "setup":

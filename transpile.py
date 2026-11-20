@@ -35,14 +35,14 @@ UNSUPPORTED_WIDGETS = {"Treeview", "LabeledScale", "PhotoImage"}
 TYPE_NAMES = {"int", "float", "str", "bool", "list", "dict", "tuple", "set", "frozenset", "object", "callable"}
 FILEPICK = {"askopenfilename", "asksaveasfilename", "askopenfilenames", "askopenfile", "asksaveasfile",
             "askdirectory"}
-FEATURES = {"fppe", "dpooa", "filepick", "datasaving", "audio"}
+FEATURES = {"fppe", "dpooa", "filepick", "datasaving", "audio", "termux-connect"}
 
 # ---- edition: make_demo.py flips DEMO to True when it builds the PocketTk Demo module. The demo only builds
 # small, plain scripts: see demo_check() and the feature filter in cmd_gen().
 DEMO = False
 DEMO_MAX_LINES = 100                                    # longest script (lines) the demo builds
 DEMO_FEATURES = {"fppe"}                                # the only #use: items that work in the demo
-DEMO_BLOCKED_MODULES = {"socket", "urllib", "requests", "sqlite3", "threading", "os", "csv"}
+DEMO_BLOCKED_MODULES = {"socket", "urllib", "requests", "sqlite3", "threading", "os", "csv", "termux"}
 DEMO_BLOCKED_WIDGETS = {"Canvas", "Toplevel", "Notebook", "Menu", "Menubutton", "OptionMenu", "PanedWindow",
                         "Scale", "Spinbox"}
 # ---- edition: make_consumer.py flips CONSUMER to True when it builds the PocketTk Consumer module. Its only limit:
@@ -54,6 +54,7 @@ FEATURE_ALIASES = {
     "native_filepicker": "filepick", "fppe": "fppe", "floatfix": "fppe", "dpooa": "dpooa", "overlay": "dpooa",
     "datasaving": "datasaving", "datasave": "datasaving", "persist": "datasaving", "datasaver": "datasaving",
     "audio": "audio", "music": "audio", "sound": "audio",
+    "termux-connect": "termux-connect", "termux": "termux-connect", "termuxconnect": "termux-connect",
 }
 FEATURE_ALIASES.update({"builtin-editing": "builtin-editing", "builtins": "builtin-editing", "builtinediting": "builtin-editing"})
 # Built-in behaviours that are on by default and can be switched off with `#builtins: NAME: disable`
@@ -87,7 +88,7 @@ EXCEPTIONS = {
 }
 MODULES = {"math", "random", "time", "json", "os", "sys", "re", "datetime", "threading", "string",
            "collections", "itertools", "functools", "copy", "operator", "statistics", "hashlib", "base64",
-           "uuid", "csv", "socket", "urllib", "requests", "sqlite3"}
+           "uuid", "csv", "socket", "urllib", "requests", "sqlite3", "termux"}
 NET_MODULES = {"socket", "urllib", "requests"}
 IGNORED_MODULES = {"typing", "__future__", "dataclasses", "abc", "enum"}
 TK_CONST = {
@@ -258,6 +259,7 @@ def parse_directives(source, audio=None, off=None):
         if m:
             text = re.sub(r"(?i)native\s+file\s*picker", "filepick", m.group(1))
             text = re.sub(r"(?i)fppe\s+handling", "fppe", text)
+            text = re.sub(r"(?i)termux[\s_]+connect", "termux-connect", text)
             text = re.sub(r"(?i)builtins?[\s_-]*editing", "builtin-editing", text)
             for tok in re.split(r"[,;\s]+", text.strip()):
                 low = tok.lower().strip(".")
@@ -270,7 +272,7 @@ def parse_directives(source, audio=None, off=None):
                 if f:
                     feats.add(f)
                 else:
-                    warns.append("line %d: unknown #use: item '%s' (known: fppe, dpooa, filepick, datasaving, audio, builtin-editing)" % (no, tok))
+                    warns.append("line %d: unknown #use: item '%s' (known: fppe, dpooa, filepick, datasaving, audio, termux-connect, builtin-editing)" % (no, tok))
             continue
         m = re.match(r"(?i)^builtins?\s*:\s*(.+?)\s*:\s*([A-Za-z]+)\s*$", body)
         if m:
@@ -2100,6 +2102,11 @@ def manifest(pkg, label, features=()):
     # every app has INTERNET: the Request page sends requests (the demo is bundled in the app, not downloaded)
     perms = '    <uses-permission android:name="android.permission.INTERNET" />\n'
     perms += '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n' if dp else ""
+    tc = "termux-connect" in features     # the termux module: run commands in Termux (RUN_COMMAND) and get the result back
+    if tc:
+        perms += '    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />\n'
+        perms += '    <queries>\n        <package android:name="com.termux" />\n    </queries>\n'
+    receiver = '        <receiver\n            android:name="apple.rt.TermuxResult"\n            android:exported="false" />\n' if tc else ""
     if "net" in features:
         app_attrs = '\n        android:usesCleartextTraffic="true"'
     else:
@@ -2142,9 +2149,9 @@ def manifest(pkg, label, features=()):
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|smallestScreenSize|density|uiMode"
             android:windowSoftInputMode="adjustResize"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
-    </application>
+%s    </application>
 </manifest>
-""" % (quoteattr(pkg), perms, quoteattr(label), app_attrs, main_attrs)
+""" % (quoteattr(pkg), perms, quoteattr(label), app_attrs, main_attrs, receiver)
 
 
 # ------------------------------------------------------------------------- demo edition
@@ -2223,6 +2230,9 @@ def cmd_gen(a):
     g.features = feats
     g.off = off
     java = g.generate()
+    if any(x.split(".")[0] == "termux" for x in list(g.alias.values()) + list(g.from_names.values())) and "termux-connect" not in feats:
+        sys.stderr.write("error: the script imports termux, which needs  #use: termux-connect  in the comments at the top of the script\n")
+        return 2
     atracks, aloop = [], True
     if "audio" in feats:
         atracks, aloop, awarn = prepare_audio(audio_items, a.script, a.outdir, a.audio_cache, fetch=not a.no_assets)

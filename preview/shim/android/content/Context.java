@@ -13,6 +13,8 @@ public class Context {
     public String getPackageName() { return System.getProperty("pockettk.package", "pockettk.preview"); }
     public ContentResolver getContentResolver() { return new ContentResolver(); }
     public void startActivity(Intent i) { PreviewEnv.sink.startActivity(i); }
+    public Object startService(Intent i) { return null; }
+    public int checkSelfPermission(String p) { return -1; }
     public android.content.pm.PackageManager getPackageManager() { return new android.content.pm.PackageManager(); }
     public android.content.res.AssetManager getAssets() { return new android.content.res.AssetManager(); }
     public android.content.SharedPreferences getSharedPreferences(String n, int m) { return new SharedPreferences(); }

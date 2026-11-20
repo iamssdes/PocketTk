@@ -10,6 +10,8 @@ public class Intent {
     public Intent addCategory(String c) { return this; } public Intent setType(String t) { type = t; return this; } public Intent addFlags(int f) { return this; } public Intent setFlags(int f) { return this; }
     public Intent setData(android.net.Uri u) { data = u; return this; } public Intent setAction(String a) { action = a; return this; }
     public Intent putExtra(String k, boolean v) { extras.put(k, v); return this; } public Intent putExtra(String k, String v) { extras.put(k, v); return this; } public Intent putExtra(String k, String[] v) { extras.put(k, v); return this; }
+    public Intent putExtra(String k, int v) { extras.put(k, v); return this; } public Intent putExtra(String k, android.os.Parcelable v) { extras.put(k, v); return this; }
+    public int getIntExtra(String k, int d) { Object o = extras.get(k); return o instanceof Integer ? (Integer) o : d; } public android.os.Bundle getBundleExtra(String k) { Object o = extras.get(k); return o instanceof android.os.Bundle ? (android.os.Bundle) o : null; }
     public Intent setClassName(String p, String c) { cls = c; return this; } public Intent setPackage(String p) { return this; }
     public android.net.Uri getData() { return data; } public ClipData getClipData() { return clip; } public String getAction() { return action; }
     @Override public String toString() { return "Intent{" + (action != null ? action : "") + (cls != null ? " cls=" + cls : "") + (data != null ? " data=" + data : "") + "}"; }
