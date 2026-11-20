@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: macos-14, arch: arm64 }
+          - { runner: macos-15, arch: arm64 }
           # An Intel runner. If GitHub retires this label, use whichever Intel macOS label exists, or build x86_64 on an
           # Intel Mac with: packaging/macos/build_app.sh x86_64
           - { runner: macos-15-intel, arch: x86_64 }
