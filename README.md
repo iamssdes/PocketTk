@@ -1,4 +1,4 @@
-# PocketTk v4.1.0
+# PocketTk v4.1.1
 
 Turn a Python **tkinter** script into an installable Android APK (or, on a Mac, an iOS .ipa). Runs in Termux (rooted or not, as a KernelSU module or on its own), or on Windows, Linux and macOS.
 (Python is transpiled to Java, or to Swift for iOS; there is no embedded CPython.)
@@ -260,6 +260,10 @@ Widgets (Label, Button, Entry, Text, Checkbutton, Radiobutton, Scale, Listbox, C
 
 **colorchooser.askcolor(color=None, title=None)** shows a dialog (palette + R/G/B sliders) and returns `((r, g, b), "#rrggbb")`, or `(None, None)` on Cancel.
 
+**Treeview** (`ttk.Treeview`): `columns=`, `show="headings"` or `"tree headings"`, `height=`, `selectmode=`; `heading()`, `column()` (width, anchor), `insert(parent, index, iid=, text=, values=, open=, tags=)`, `delete`, `detach`, `move`, `item`, `set`, `get_children`, `parent`, `index`, `next`, `prev`, `exists`, `selection` / `selection_set/add/remove/toggle`, `focus`, `see`, `tag_configure(background=, foreground=)`, and the events `<<TreeviewSelect>>`, `<<TreeviewOpen>>`, `<<TreeviewClose>>` and double tap. A tap on a row selects it; with the tree column shown it also opens or closes a parent row. **LabeledScale**: a number label above (or `compound="bottom"` below) a scale, both on `variable=`.
+
+**Images**: `tk.PhotoImage(file="logo.png")` (PNG, JPEG, GIF, WebP, BMP; the file next to your script is copied into the app), `PhotoImage(data=base64_text)`, `PhotoImage(width=, height=)`, with `width() height() zoom() subsample() copy() put() get() blank() configure()`. Use it with `image=` on Label and Button (`compound="left|right|top|bottom"` shows text too; without `compound` only the picture shows) and `canvas.create_image(x, y, image=img, anchor="nw")`. Keep a reference to the image, as in tkinter. No PIL / ImageTk.
+
 **Classes**: inheritance and multiple inheritance (C3 order), `super()`, several instances of one class, subclassing `tk.Frame`/`tk.Tk`/`threading.Thread`, `@staticmethod`, `@classmethod`, `@property` (+ setter), `@dataclass`, `Enum`, and dunder methods (`__str__ __repr__ __eq__ __lt__ __add__ __getitem__ __len__ __iter__ __call__ __contains__ __enter__ __exit__`...).
 **Generators** (`yield`, `yield from`, `.send`, `.close`), **decorators** (functions and classes), **bytes/bytearray** and binary file modes (`"rb"`, `"wb"`).
 
@@ -267,7 +271,7 @@ Widgets (Label, Button, Entry, Text, Checkbutton, Radiobutton, Scale, Listbox, C
 
 ## Not supported / limits
 Audio: no live streams or YouTube playlist links (list the video ids with `#playlist:`), no playback control from Python, no playback after the app is closed.
-Treeview; images/PhotoImage; askdirectory returns the app's files dir. Subclassing built-in types (dict, list...) is not supported. Exception classes with their own methods/attributes are only partly supported. sqlite3 named parameters (`:name`) and row factories are not supported; `csv` dialects other than delimiter/quotechar/quoting are ignored. `requests` is a minimal built-in; **pip packages cannot be used** (there is no embedded CPython).
+Treeview; askdirectory returns the app's files dir. Subclassing built-in types (dict, list...) is not supported. Exception classes with their own methods/attributes are only partly supported. sqlite3 named parameters (`:name`) and row factories are not supported; `csv` dialects other than delimiter/quotechar/quoting are ignored. `requests` is a minimal built-in; **pip packages cannot be used** (there is no embedded CPython).
 
 ## Tested on a real device
 `#use: termux-connect` (`import termux`) has not been tried on a phone yet: the transpiler output is tested on a desktop (`tests/test_termux_connect.py`), but the `RUN_COMMAND` call itself, the result broadcast and the permission question are written from Termux's documented interface and are the part to watch on a real phone.

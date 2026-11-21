@@ -3,7 +3,12 @@ package apple.rt;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -1062,6 +1067,27 @@ public final class Ui {
         return r == null ? "" : r;
     }
 
+    /** ttk.LabeledScale: a Frame with a Label that shows the number and a Scale, both on one variable. */
+    public static Object labeledScale(final Object parent, final Object... kv) {
+        Object var = null, from = 0L, to = 10L, compound = "top";
+        List<Object> rest = new ArrayList<Object>();
+        for (int i = 0; i + 1 < kv.length; i += 2) {
+            String k = String.valueOf(kv[i]);
+            if (k.equals("variable")) var = kv[i + 1];
+            else if (k.equals("from_")) from = kv[i + 1];
+            else if (k.equals("to")) to = kv[i + 1];
+            else if (k.equals("compound")) compound = kv[i + 1];
+        }
+        if (!(var instanceof Py.Var)) var = new Py.Var("IntVar", from);
+        Object frame = w("Frame", parent);
+        Object lab = w("Label", frame, "textvariable", var);
+        Object sc = w("Scale", frame, "variable", var, "from_", from, "to", to, "orient", "horizontal");
+        boolean labelFirst = !"bottom".equals(String.valueOf(compound));
+        Object[] order = labelFirst ? new Object[]{lab, sc} : new Object[]{sc, lab};
+        for (Object o : order) ((Py.Obj) o).callm("pack", new Object[]{Py.kw("fill", "x")});
+        return frame;
+    }
+
     public static Object dummy() {
         return new Py.Obj() { public Object callm(String n, Object[] a) { return null; } };
     }
@@ -1851,7 +1877,177 @@ public final class Ui {
 
     // ------------------------------------------------------------------ canvas
 
+
+    // ----------------------------------------------------------------- images (PhotoImage)
+
+    /** tkinter's PhotoImage: a bitmap in "tk pixels" (1 pixel = 1 dp). Widgets and canvases that show it are redrawn when it changes. */
+    public static final class Img implements Py.Obj {
+        Bitmap bm;
+        final List<Object> users = new ArrayList<Object>();
+        Img(Bitmap b) { bm = b; }
+
+        static Bitmap decode(Map<String, Object> m) {
+            Object data = m.get("data"), file = m.get("file");
+            Bitmap b = null;
+            if (data != null) {
+                byte[] raw;
+                if (data instanceof byte[]) raw = (byte[]) data;
+                else {
+                    try { raw = android.util.Base64.decode(Py.str(data).trim(), android.util.Base64.DEFAULT); }
+                    catch (Throwable t) { raw = null; }
+                }
+                if (raw != null) b = BitmapFactory.decodeByteArray(raw, 0, raw.length);
+                if (b == null) throw new Py.PyError("TclError", "image data is not valid or the format is not supported");
+            } else if (file != null) {
+                String f = Py.str(file);
+                String asset = m.get("asset") == null ? null : Py.str(m.get("asset"));
+                if (asset != null) {
+                    try { InputStream in = ctx.getAssets().open(asset); b = BitmapFactory.decodeStream(in); in.close(); } catch (Throwable t) { b = null; }
+                }
+                if (b == null) {
+                    File fl = new File(f);
+                    if (!fl.isAbsolute()) fl = new File(ctx.getFilesDir(), f);
+                    if (!fl.isFile()) fl = new File(f);
+                    if (fl.isFile()) b = BitmapFactory.decodeFile(fl.getPath());
+                }
+                if (b == null) throw new Py.PyError("TclError", "couldn't open \"" + f + "\": no such file or directory");
+            }
+            int w = m.get("width") == null ? 0 : (int) Py.dbl(m.get("width")), h = m.get("height") == null ? 0 : (int) Py.dbl(m.get("height"));
+            if (b == null) b = Bitmap.createBitmap(Math.max(w, 1), Math.max(h, 1), Bitmap.Config.ARGB_8888);
+            else if (w > 0 || h > 0) b = Bitmap.createScaledBitmap(b, w > 0 ? w : b.getWidth(), h > 0 ? h : b.getHeight(), false);
+            return b;
+        }
+
+        Bitmap mutable() { return bm.copy(Bitmap.Config.ARGB_8888, true); }
+        int wd() { return bm.getWidth(); }
+        int ht() { return bm.getHeight(); }
+        void changed() {
+            for (Object u : new ArrayList<Object>(users)) {
+                if (u instanceof Wid) ((Wid) u).applyImage();
+                else if (u instanceof CanvasView) ((CanvasView) u).invalidate();
+            }
+        }
+        Drawable drawable() {
+            BitmapDrawable d = new BitmapDrawable(ctx.getResources(), bm);
+            d.setBounds(0, 0, dp(wd()), dp(ht()));
+            return d;
+        }
+
+        static int arg(Object[] a, int i, int dflt) { return a.length > i && a[i] != null ? (int) Py.dbl(a[i]) : dflt; }
+
+        public Object callm(String name, Object[] a) {
+            switch (name) {
+                case "width": return (long) wd();
+                case "height": return (long) ht();
+                case "copy": return new Img(mutable());
+                case "zoom": { int x = arg(a, 0, 1), y = arg(a, 1, x); return new Img(Bitmap.createScaledBitmap(bm, Math.max(1, wd() * x), Math.max(1, ht() * y), false)); }
+                case "subsample": { int x = Math.max(1, arg(a, 0, 1)), y = Math.max(1, arg(a, 1, x)); return new Img(Bitmap.createScaledBitmap(bm, Math.max(1, wd() / x), Math.max(1, ht() / y), false)); }
+                case "blank": bm = Bitmap.createBitmap(wd(), ht(), Bitmap.Config.ARGB_8888); changed(); return null;
+                case "get": {
+                    int x = arg(a, 0, 0), y = arg(a, 1, 0);
+                    if (x < 0 || y < 0 || x >= wd() || y >= ht()) throw new Py.PyError("TclError", "coordinates out of range");
+                    int c = bm.getPixel(x, y);
+                    List<Object> r = new ArrayList<Object>();
+                    r.add((long) ((c >> 16) & 255)); r.add((long) ((c >> 8) & 255)); r.add((long) (c & 255));
+                    return new Py.Tuple(r);
+                }
+                case "put": return put(a);
+                case "configure": case "config": {
+                    Map<String, Object> m = new LinkedHashMap<String, Object>();
+                    for (Object x : a) if (x instanceof Py.Kw) m.put(((Py.Kw) x).k, ((Py.Kw) x).v);
+                    if (m.containsKey("file") || m.containsKey("data") || m.containsKey("width") || m.containsKey("height")) { bm = decode(m); changed(); }
+                    return null;
+                }
+                case "cget": { String k = Py.str(a[0]); return k.equals("width") ? (Object) (long) wd() : k.equals("height") ? (Object) (long) ht() : ""; }
+                case "type": return "photo";
+                case "name": return "pyimage" + System.identityHashCode(this);
+                default: throw new Py.PyError("AttributeError", "'PhotoImage' object has no attribute '" + name + "'");
+            }
+        }
+
+        Object put(Object[] a) {
+            Object data = a.length > 0 ? a[0] : null;
+            int x1 = 0, y1 = 0, x2 = -1, y2 = -1;
+            Object to = null;
+            for (int i = 1; i < a.length; i++) {
+                if (a[i] instanceof Py.Kw) { if (((Py.Kw) a[i]).k.equals("to")) to = ((Py.Kw) a[i]).v; }
+                else if (to == null && i == 1) to = a[i];
+            }
+            if (to instanceof List) {
+                List<?> t = (List<?>) to;
+                if (t.size() >= 2) { x1 = (int) Py.dbl(t.get(0)); y1 = (int) Py.dbl(t.get(1)); }
+                if (t.size() >= 4) { x2 = (int) Py.dbl(t.get(2)); y2 = (int) Py.dbl(t.get(3)); }
+            }
+            List<List<Integer>> rows = new ArrayList<List<Integer>>();
+            for (String row : splitBraces(data instanceof List ? joinList((List<?>) data) : Py.str(data))) {
+                List<Integer> r = new ArrayList<Integer>();
+                for (String c : splitBraces(row)) { Integer v = color(c); r.add(v == null ? 0 : v); }
+                rows.add(r);
+            }
+            if (rows.isEmpty()) return null;
+            if (bm.getWidth() < 1) return null;
+            Bitmap m = mutable();
+            int needW = x1 + rows.get(0).size(), needH = y1 + rows.size();
+            if (x2 > x1 || y2 > y1) { needW = Math.max(needW, x2); needH = Math.max(needH, y2); }
+            if (needW > m.getWidth() || needH > m.getHeight()) {
+                Bitmap g = Bitmap.createBitmap(Math.max(needW, m.getWidth()), Math.max(needH, m.getHeight()), Bitmap.Config.ARGB_8888);
+                for (int y = 0; y < m.getHeight(); y++) for (int x = 0; x < m.getWidth(); x++) g.setPixel(x, y, m.getPixel(x, y));
+                m = g;
+            }
+            int endX = x2 > x1 ? x2 : x1 + rows.get(0).size(), endY = y2 > y1 ? y2 : y1 + rows.size();
+            for (int y = y1; y < endY && y < m.getHeight(); y++) {
+                List<Integer> r = rows.get((y - y1) % rows.size());
+                for (int x = x1; x < endX && x < m.getWidth(); x++) m.setPixel(x, y, r.get((x - x1) % r.size()));
+            }
+            bm = m;
+            changed();
+            return null;
+        }
+
+        static String joinList(List<?> l) {
+            StringBuilder b = new StringBuilder();
+            for (Object o : l) { b.append(o instanceof List ? "{" + joinList((List<?>) o) + "}" : Py.str(o)).append(' '); }
+            return b.toString().trim();
+        }
+
+        /** "{a b} {c d}" or "a b c" -> its top-level pieces. */
+        static List<String> splitBraces(String s) {
+            List<String> r = new ArrayList<String>();
+            int i = 0, n = s.length();
+            while (i < n) {
+                char c = s.charAt(i);
+                if (Character.isWhitespace(c)) { i++; continue; }
+                if (c == '{') {
+                    int d = 1, j = i + 1;
+                    while (j < n && d > 0) { char x = s.charAt(j); if (x == '{') d++; else if (x == '}') d--; j++; }
+                    r.add(s.substring(i + 1, Math.max(i + 1, j - 1)));
+                    i = j;
+                } else {
+                    int j = i;
+                    while (j < n && !Character.isWhitespace(s.charAt(j))) j++;
+                    r.add(s.substring(i, j));
+                    i = j;
+                }
+            }
+            return r;
+        }
+    }
+
+    /** PhotoImage(file=..., data=..., width=..., height=...): kv is name, value pairs. */
+    public static Object photo(final Object... kv) {
+        Map<String, Object> m = new LinkedHashMap<String, Object>();
+        for (int i = 0; i + 1 < kv.length; i += 2) m.put(String.valueOf(kv[i]), kv[i + 1]);
+        return new Img(Img.decode(m));
+    }
+
+    static Img imgOf(Object v) {
+        Object o = Oop.unwrap(v);
+        return o instanceof Img ? (Img) o : null;
+    }
+
     static final class CItem {
+        Img img;
+        String anchor = "center";
         int id;
         String type;
         double[] c;
@@ -1924,6 +2120,15 @@ public final class Ui {
                     cv.drawText(it.text, (float) c[0], (float) c[1] + it.size / 3f, paint);
                     break;
                 }
+                case "image": {
+                    if (it.img == null || c.length < 2) break;
+                    float w = it.img.wd(), h = it.img.ht(), x = (float) c[0], y = (float) c[1];
+                    String an = it.anchor.equals("center") ? "" : it.anchor;     // "center" itself contains n and e
+                    if (an.contains("w")) { /* left edge at x */ } else if (an.contains("e")) x -= w; else x -= w / 2;
+                    if (an.contains("n")) { /* top edge at y */ } else if (an.contains("s")) y -= h; else y -= h / 2;
+                    cv.drawBitmap(it.img.bm, null, new RectF(x, y, x + w, y + h), paint);
+                    break;
+                }
                 default: break;
             }
         }
@@ -1960,6 +2165,7 @@ public final class Ui {
         double pbMax = 100, pbVal = 0;
         List<Object> choices = new ArrayList<Object>();
         CanvasView canvas;
+        Tree tree;
         int nextItem = 1;
         // Notebook (tabs)
         LinearLayout tabBar;
@@ -2076,6 +2282,11 @@ public final class Ui {
                     });
                     view = s;
                     applyRange();
+                    break;
+                }
+                case "Treeview": {
+                    tree = new Tree(this, a);
+                    view = tree.view;
                     break;
                 }
                 case "Listbox": {
@@ -2367,6 +2578,8 @@ public final class Ui {
 
         void setText(String s) {
             TextView tv = tview();
+            shownText = s;
+            if (imageOpt != null && (compoundOpt.equals("none") || compoundOpt.isEmpty()) && !(view instanceof EditText)) s = "";
             if (tv != null) {
                 updating = true;
                 try { tv.setText(s); } finally { updating = false; }
@@ -2718,6 +2931,7 @@ public final class Ui {
                 else if (v == null || "".equals(v)) { barMenu = null; rebuildBar(); }
                 return;
             }
+            if (tree != null && (k.equals("columns") || k.equals("show") || k.equals("selectmode") || k.equals("height") || k.equals("displaycolumns"))) { tree.option(k, v); return; }
             switch (k) {
                 case "text":
                     if (textvar == null && tview() != null && !(view instanceof ViewGroup)) setText(Py.str(v));
@@ -2814,8 +3028,10 @@ public final class Ui {
                 case "highlightthickness": case "activebackground": case "activeforeground":
                 case "orient": case "wrap_": case "wraplength": case "undo":
                 case "insertbackground": case "selectcolor": case "exportselection":
-                case "labelanchor": case "compound": case "underline": case "tearoff":
-                case "image": case "name": case "yscrollcommand": case "xscrollcommand":
+                case "image": imageOpt = imgOf(v); if (imageOpt != null && !imageOpt.users.contains(this)) imageOpt.users.add(this); applyImage(); break;
+                case "compound": compoundOpt = v == null ? "none" : Py.str(v).toLowerCase(); applyImage(); break;
+                case "labelanchor": case "underline": case "tearoff":
+                case "name": case "yscrollcommand": case "xscrollcommand":
                 case "mode": case "style": case "highlightbackground": case "selectbackground":
                 case "selectforeground": case "disabledforeground": case "listvariable": case "validate":
                 case "validatecommand": case "invalidcommand": case "postcommand": case "indicatoron":
@@ -2824,6 +3040,29 @@ public final class Ui {
                 default:
                     warn("ignored option " + k + " on " + kind);
             }
+        }
+
+        Img imageOpt;
+        String compoundOpt = "none";
+        String shownText;
+
+        /** image= (and compound=) on a Label or Button: the picture is a compound drawable of the text view. */
+        void applyImage() {
+            TextView tv = view instanceof TextView && !(view instanceof EditText) ? (TextView) view : null;
+            if (tv == null) return;
+            Drawable d = imageOpt == null ? null : imageOpt.drawable();
+            boolean both = !compoundOpt.equals("none") && !compoundOpt.isEmpty();
+            if (d == null) { tv.setCompoundDrawables(null, null, null, null); }
+            else if (!both || compoundOpt.equals("center")) tv.setCompoundDrawables(null, d, null, null);
+            else if (compoundOpt.equals("left")) tv.setCompoundDrawables(d, null, null, null);
+            else if (compoundOpt.equals("right")) tv.setCompoundDrawables(null, null, d, null);
+            else if (compoundOpt.equals("bottom")) tv.setCompoundDrawables(null, null, null, d);
+            else tv.setCompoundDrawables(null, d, null, null);
+            tv.setCompoundDrawablePadding(dp(4));
+            // with an image and no compound= tkinter shows only the image
+            boolean hideText = d != null && !both;
+            String want = hideText ? "" : (shownText == null ? tv.getText().toString() : shownText);
+            if (!tv.getText().toString().equals(want)) tv.setText(want);
         }
 
         void applyFont(Object v) {
@@ -2985,6 +3224,13 @@ public final class Ui {
                     case "outline": it.outline = color(e.getValue()); break;
                     case "width": it.width = (float) Py.dbl(e.getValue()); break;
                     case "text": it.text = Py.str(e.getValue()); break;
+                    case "image": {
+                        if (it.img != null) it.img.users.remove(canvas);
+                        it.img = imgOf(e.getValue());
+                        if (it.img != null && !it.img.users.contains(canvas)) it.img.users.add(canvas);
+                        break;
+                    }
+                    case "anchor": it.anchor = Py.str(e.getValue()).toLowerCase(); break;
                     case "tags": case "tag": {
                         Object t = e.getValue();
                         if (t instanceof List) for (Object x : (List) t) it.tags.add(Py.str(x)); else it.tags.add(Py.str(t));
@@ -3043,6 +3289,10 @@ public final class Ui {
             if (lbBox != null) {
                 Object r = listboxCall(name, pos);
                 if (r != NOPE) return r;
+            }
+            if (tree != null) {
+                Object r = tree.call(name, pos, kw);
+                if (r != Tree.NOPE) return r;
             }
             if (kind.equals("Menu")) {
                 Object r = menuCall(name, pos, kw);
@@ -3238,6 +3488,7 @@ public final class Ui {
                 });
                 return;
             }
+            if (tree != null && (seq.contains("Treeview") || seq.contains("Double") || seq.contains("Return") || seq.contains("Button-1"))) { tree.bind(seq, fn); return; }
             if (seq.contains("ListboxSelect") || seq.contains("ComboboxSelected") || seq.contains("Spinbox")) { selFn = fn; return; }
             final Wid self = this;
             if (canvas != null && (seq.contains("Button-1") || seq.contains("Motion") || seq.contains("ButtonRelease"))) {
@@ -3352,6 +3603,7 @@ public final class Ui {
                 case "create_oval": return (long) citem("oval", pos, kw).id;
                 case "create_polygon": return (long) citem("polygon", pos, kw).id;
                 case "create_text": return (long) citem("text", pos, kw).id;
+                case "create_image": return (long) citem("image", pos, kw).id;
                 case "delete": {
                     List<CItem> hit = citems(a0 == null ? "all" : a0);
                     canvas.items.removeAll(hit);

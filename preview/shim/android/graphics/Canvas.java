@@ -44,6 +44,12 @@ public class Canvas {
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setFont(f); g.setColor(new java.awt.Color(p.color, true)); g.drawString(t, x, y);
     }
+    public void drawBitmap(Bitmap bm, float x, float y, Paint p) { g.drawImage(bm.img, Math.round(x), Math.round(y), null); }
+    public void drawBitmap(Bitmap bm, Rect src, RectF dst, Paint p) {
+        int sx = 0, sy = 0, sw = bm.getWidth(), sh = bm.getHeight(); if (src != null) { sx = src.left; sy = src.top; sw = src.right - src.left; sh = src.bottom - src.top; }
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        g.drawImage(bm.img, Math.round(dst.left), Math.round(dst.top), Math.round(dst.right), Math.round(dst.bottom), sx, sy, sx + sw, sy + sh, null);
+    }
     public int getWidth() { Rectangle r = g.getClipBounds(); return r == null ? 0 : r.width; }
     public int getHeight() { Rectangle r = g.getClipBounds(); return r == null ? 0 : r.height; }
 }

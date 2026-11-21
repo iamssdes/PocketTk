@@ -29,9 +29,13 @@ WIDGETS = {
     "Frame", "LabelFrame", "Labelframe", "Toplevel", "PanedWindow", "Label", "Message", "Button",
     "Entry", "Text", "Checkbutton", "Radiobutton", "Scale", "Listbox", "Combobox", "Spinbox",
     "Progressbar", "Separator", "Canvas", "Scrollbar", "Notebook", "Menu", "Menubutton", "OptionMenu",
-    "Sizegrip",
+    "Sizegrip", "Treeview",
 }
-UNSUPPORTED_WIDGETS = {"Treeview", "LabeledScale", "PhotoImage"}
+EXTRA_TK_NAMES = {"LabeledScale"}
+UNSUPPORTED_WIDGETS = {"PhotoImage", "LabeledScale"}   # handled specially in tk_call; the rest of this set would be a placeholder
+# PhotoImage(file="x.png") with a literal name: the file next to the script is copied into the app (assets/img/). Filled by tk_call.
+SCRIPT_DIR = "."
+IMAGE_FILES = {}
 TYPE_NAMES = {"int", "float", "str", "bool", "list", "dict", "tuple", "set", "frozenset", "object", "callable"}
 FILEPICK = {"askopenfilename", "asksaveasfilename", "askopenfilenames", "askopenfile", "asksaveasfile",
             "askdirectory"}
@@ -1295,6 +1299,35 @@ class Gen:
                 else:
                     kv += [jstr(k), v]
             return 'Ui.w("%s", %s%s)' % (c, parent, "".join(", " + x for x in kv))
+        if c == "LabeledScale":
+            parent = self.expr(args[0]) if args else "null"
+            kv = []
+            for k in n.keywords:
+                if k.arg in ("variable", "from_", "to", "compound"):
+                    kv += [jstr(k.arg), self.expr(k.value)]
+            if len(args) > 1 and not any(k.arg == "variable" for k in n.keywords):
+                kv += ['"variable"', self.expr(args[1])]
+            return "Ui.labeledScale(%s%s)" % (parent, "".join(", " + x for x in kv))
+        if c == "PhotoImage":
+            kv = []
+            for k in n.keywords:
+                if k.arg in ("file", "data", "format", "width", "height", "gamma", "palette"):
+                    kv += [jstr(k.arg), self.expr(k.value)]
+                    if k.arg == "file" and isinstance(k.value, ast.Constant) and isinstance(k.value.value, str):
+                        lit = k.value.value
+                        src = lit if os.path.isabs(lit) else os.path.join(SCRIPT_DIR, lit)
+                        if os.path.isfile(src):
+                            ext = os.path.splitext(lit)[1].lower() or ".png"
+                            name = "img/" + hashlib.md5(lit.encode("utf-8")).hexdigest()[:12] + ext
+                            IMAGE_FILES[name] = src
+                            kv += ['"asset"', jstr(name)]
+                        else:
+                            self.warn(n, "image file '%s' was not found next to the script; the app will look for it on the phone" % lit)
+                elif k.arg in ("master", "name", "cnf"):
+                    pass
+                else:
+                    self.warn(n, "PhotoImage option '%s' is ignored" % k.arg)
+            return "Ui.photo(%s)" % ", ".join(kv)
         if c in UNSUPPORTED_WIDGETS:
             self.warn(n, "%s is not supported yet; a placeholder label is shown instead" % c)
             parent = self.expr(args[0]) if args else "null"
@@ -2200,6 +2233,9 @@ def cmd_gen(a):
     except OSError as e:
         sys.stderr.write("Cannot read %s: %s\n" % (a.script, e))
         return 2
+    global SCRIPT_DIR
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(a.script))
+    IMAGE_FILES.clear()
     audio_items = []
     off = set()
     feats, opts, dwarn = parse_directives(source, audio_items, off)
@@ -2241,6 +2277,11 @@ def cmd_gen(a):
             dwarn.append("#use: audio but no #audio: or #playlist: line (e.g.  #audio: dQw4w9WgXcQ )")
         elif not atracks:
             dwarn.append("no audio could be added, the app will be silent")
+    if IMAGE_FILES and not a.no_assets:
+        idir = os.path.join(a.outdir, "assets", "img")
+        os.makedirs(idir, exist_ok=True)
+        for name, src in IMAGE_FILES.items():
+            shutil.copyfile(src, os.path.join(a.outdir, "assets", name))
     gen_dir = os.path.join(a.outdir, "src", "apple", "gen")
     os.makedirs(gen_dir, exist_ok=True)
     with open(os.path.join(gen_dir, "Script.java"), "w", encoding="utf-8") as f:

@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.1.1: wider tkinter support
+- **Treeview** and **LabeledScale** are real widgets (they were placeholders).
+- **Images**: `PhotoImage` (file, base64 data, size, zoom, subsample, copy, put, get), `image=` / `compound=` on Label and Button, and `Canvas.create_image`. The PC preview got the matching Android pieces (Bitmap, BitmapFactory, BitmapDrawable, compound drawables on text views).
+
 ## v4.1.0
 - **The PocketTk window for macOS, Windows and Linux (no system terminal needed).** It is terminal-style: a prompt with history and Tab completion (commands, options, app ids, paths), our own commands (`pick`, `use`, `build`, `check`, `preview`, `install`, `devices`, `update`, `apps`, `doctor`, `setup`, `cd`, `ls`, `reveal`, `outdir`, `theme`, `help`), live build output, Ctrl+C to cancel, drag a `.py` onto the window, the Android SDK licence and keystore password asked on the prompt line, four colour themes. APK or Google Play `.aab`. No local web server or network port (pywebview's own bridge). `pockettk gui [file] [--pick]` opens it. `webui/`, `pockettk_gui.py`.
 - **Packages:** macOS `.dmg` (Apple Silicon, Intel), Windows installer (per-user, no admin rights) and portable `.zip`, Linux `.AppImage` (one file, double-click; needs FUSE) and `.tar.gz` with `./install.sh`. Each carries its own Python and pywebview (Linux: Qt WebEngine from pip wheels). `packaging/macos/`, `packaging/windows/`, `packaging/linux/`, built by `.github/workflows/apps.yml` on a `v*` tag (a tag with a `-`, like `v4.1.0-rc1`, makes a pre-release).

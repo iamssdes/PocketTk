@@ -89,7 +89,7 @@ def run_preview(tk, src, width, height, dpi, cpu, name, keep):
         tk.run([javac, "-nowarn", "-Xlint:none", "--release", "8", "-encoding", "UTF-8", "-cp", rt, "-d", os.path.join(bd, "classes"), "@" + lst],
                log=os.path.join(bd, "javac.log"))
         while True:
-            cmd = [java] + (["-Xdock:name=PocketTk", "-Dapple.awt.application.name=PocketTk"] if sys.platform == "darwin" else []) + ["-Dpockettk.package=" + pkg, "-Dpockettk.title=" + (name or base), "-Dpockettk.versionName=1.0.0",
+            cmd = [java] + (["-Xdock:name=PocketTk", "-Dapple.awt.application.name=PocketTk"] if sys.platform == "darwin" else []) + ["-Dpockettk.package=" + pkg, "-Dpockettk.assets=" + os.path.join(bd, "assets"), "-Dpockettk.title=" + (name or base), "-Dpockettk.versionName=1.0.0",
                    "-cp", os.pathsep.join([os.path.join(bd, "classes"), rt]), "pockettk.preview.PhoneHost",
                    "--settings", settings, "--title", name or base]
             for k, v in (("width", width), ("height", height), ("dpi", dpi), ("cpu", cpu)):

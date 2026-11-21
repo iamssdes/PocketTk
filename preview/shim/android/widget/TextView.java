@@ -54,7 +54,11 @@ public class TextView extends View {
     protected Object keyListener = this; public void setKeyListener(Object k) { keyListener = k; } public Object getKeyListener() { return keyListener; } public void setTextIsSelectable(boolean b) {} public void setCursorVisible(boolean b) {} public void setImeOptions(int o) {}
     public void setMovementMethod(Object m) {} public void setLinksClickable(boolean b) {} public void setAutoLinkMask(int m) {} public void setIncludeFontPadding(boolean b) {}
     public void setLetterSpacing(float f) {} public void setPaintFlags(int f) {} public void setHorizontallyScrolling(boolean b) {} public void setFilters(Object[] f) {} public void setTransformationMethod(Object t) {}
-    public void setCompoundDrawablePadding(int p) {} public void setBreakStrategy(int s) {} public void setHyphenationFrequency(int f) {}
+    android.graphics.drawable.Drawable[] cd = new android.graphics.drawable.Drawable[4]; int cdPad;
+    public void setCompoundDrawablePadding(int p) { cdPad = p; requestLayout(); invalidate(); }
+    public void setCompoundDrawables(android.graphics.drawable.Drawable l, android.graphics.drawable.Drawable t, android.graphics.drawable.Drawable r, android.graphics.drawable.Drawable b) { cd[0] = l; cd[1] = t; cd[2] = r; cd[3] = b; requestLayout(); invalidate(); }
+    int cdw(int i) { return cd[i] == null ? 0 : cd[i].getBounds_r() - cd[i].getBounds_l(); } int cdh(int i) { return cd[i] == null ? 0 : cd[i].getBounds_b() - cd[i].getBounds_t(); }
+    int cdW() { int w = cdw(0) + cdw(2); return w + (cdw(0) > 0 ? cdPad : 0) + (cdw(2) > 0 ? cdPad : 0); } int cdH() { int h = cdh(1) + cdh(3); return h + (cdh(1) > 0 ? cdPad : 0) + (cdh(3) > 0 ? cdPad : 0); } public void setBreakStrategy(int s) {} public void setHyphenationFrequency(int f) {}
     public Paint getPaint() { Paint p = new Paint(); p.typeface = face; p.textSize = sizePx; return p; }
     public int getLineCount() { return lines(avail()).size(); }
     // ---- text layout
@@ -65,7 +69,7 @@ public class TextView extends View {
     static final Map<String, Float> WIDTHS = new HashMap<>();
     static float width(Font f, String s) { if (s.isEmpty()) return 0; String k = f.getName() + f.getStyle() + f.getSize2D() + "|" + s; Float w = WIDTHS.get(k); if (w == null) { if (WIDTHS.size() > 20000) WIDTHS.clear(); w = Canvas.measure(f, s); WIDTHS.put(k, w); } return w; }
     protected String shown() { String t = buf.toString(); if ((inputType & 0xFFF) == (InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD) && !t.isEmpty()) { StringBuilder b = new StringBuilder(); for (int i = 0; i < t.length(); i++) b.append('•'); return b.toString(); } return allCaps ? t.toUpperCase() : t; }
-    protected int avail() { return Math.max(1, getWidth() - padL - padR - compoundLeft()); }
+    protected int avail() { return Math.max(1, getWidth() - padL - padR - compoundLeft() - cdW()); }
     protected int compoundLeft() { return 0; }
     List<Ln> lines(float maxW) { return layoutLines(shown(), font(), single ? Float.MAX_VALUE : maxW); }
     static List<Ln> layoutLines(String t, Font f, float maxW) {
@@ -96,36 +100,43 @@ public class TextView extends View {
     protected float lineH() { Paint.FontMetrics m = Canvas.metrics(font()); return (m.descent - m.ascent + m.leading) * lineMul + lineAdd; }
     @Override protected void onMeasure(int ws, int hs) {
         int wm = MeasureSpec.getMode(ws), wsz = MeasureSpec.getSize(ws), hm = MeasureSpec.getMode(hs), hsz = MeasureSpec.getSize(hs);
-        int extra = padL + padR + compoundLeft(); float maxW = wm == MeasureSpec.UNSPECIFIED ? Float.MAX_VALUE : Math.max(1, wsz - extra);
+        int extra = padL + padR + compoundLeft() + cdW(); float maxW = wm == MeasureSpec.UNSPECIFIED ? Float.MAX_VALUE : Math.max(1, wsz - extra);
         String txt = shown(); boolean showHint = txt.isEmpty() && hint != null; if (showHint) txt = hint.toString();
         List<Ln> ls = layoutLines(txt, font(), single ? Float.MAX_VALUE : maxW);
         float tw = 0; for (Ln l : ls) tw = Math.max(tw, l.w);
         if (minEms > 0) tw = Math.max(tw, minEms * width(font(), "M"));
         int w = wm == MeasureSpec.EXACTLY ? wsz : (int) Math.ceil(tw) + extra; if (wm == MeasureSpec.AT_MOST) w = Math.min(w, wsz); w = Math.max(w, minW);
         int n = Math.min(Math.max(ls.size(), minLines), maxLines); if (lines >= 0) n = lines;
-        int h = (int) Math.ceil(n * lineH()) + padT + padB; h = Math.max(h, minH);
+        int h = (int) Math.ceil(n * lineH()) + padT + padB + cdH(); if (txt.isEmpty() && cdh(1) + cdh(3) > 0) h = Math.max(h - (int) Math.ceil(lineH()), padT + padB + cdH()); h = Math.max(h, minH);
         if (hm == MeasureSpec.EXACTLY) h = hsz; else if (hm == MeasureSpec.AT_MOST) h = Math.min(h, hsz);
         setMeasuredDimension(w, h);
     }
     @Override protected void onDraw(Canvas c) {
         String txt = shown(); boolean hintMode = txt.isEmpty() && hint != null; if (hintMode) txt = hint.toString();
         Font f = font(); Paint.FontMetrics fm = Canvas.metrics(f); float lh = lineH();
-        int availW = getWidth() - padL - padR - compoundLeft(), availH = getHeight() - padT - padB;
+        int availW = getWidth() - padL - padR - compoundLeft() - cdW(), availH = getHeight() - padT - padB - cdH();
         List<Ln> ls = layoutLines(txt, f, single ? Float.MAX_VALUE : availW);
         int n = Math.min(ls.size(), maxLines); float th = n * lh;
-        float y0 = padT; int gv = Gravity.v(gravity); if (gv == Gravity.CENTER_VERTICAL) y0 += (availH - th) / 2; else if (gv == Gravity.BOTTOM) y0 += availH - th;
+        float y0 = padT + cdh(1) + (cdh(1) > 0 ? cdPad : 0); int gv = Gravity.v(gravity); if (gv == Gravity.CENTER_VERTICAL) y0 += (availH - th) / 2; else if (gv == Gravity.BOTTOM) y0 += availH - th;
         int gh = Gravity.h(gravity);
         c.save(); c.clipRect(padL, padT, getWidth() - padR, getHeight() - padB);
         java.awt.Graphics2D g = c.g; g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON); g.setRenderingHint(java.awt.RenderingHints.KEY_FRACTIONALMETRICS, java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         for (int i = 0; i < n; i++) {
             Ln l = ls.get(i); if (l.e <= l.s) continue;
-            float x = padL + compoundLeft(); if (gh == 1) x += (availW - l.w) / 2; else if (gh == 5) x += availW - l.w;
+            float x = padL + compoundLeft() + cdw(0) + (cdw(0) > 0 ? cdPad : 0); if (gh == 1) x += (availW - l.w) / 2; else if (gh == 5) x += availW - l.w;
             float by = y0 + i * lh + (lh - (fm.descent - fm.ascent)) / 2 - fm.ascent;
             String piece = txt.substring(l.s, l.e).replaceAll("\\s+$", ""); if (piece.isEmpty()) continue;
             int col = hintMode ? hintColor : (enabled ? color : (color & 0xFFFFFF) | 0x66000000);
             if (!hintMode && !buf.spans.isEmpty()) drawSpanned(g, piece, l.s, f, x, by, col); else { g.setFont(f); g.setColor(new java.awt.Color(col, true)); g.drawString(piece, x, by); }
         }
-        c.restore(); drawExtras(c, ls, f, fm, lh, y0);
+        c.restore(); drawCompound(c, th); drawExtras(c, ls, f, fm, lh, y0);
+    }
+    private void drawCompound(Canvas c, float th) {
+        int cw = getWidth() - padL - padR, ch = getHeight() - padT - padB;
+        for (int i = 0; i < 4; i++) { android.graphics.drawable.Drawable d = cd[i]; if (d == null) continue; int w = cdw(i), h = cdh(i), x, y;
+            if (i == 0) { x = padL; y = padT + (ch - h) / 2; } else if (i == 2) { x = getWidth() - padR - w; y = padT + (ch - h) / 2; }
+            else if (i == 1) { x = padL + (cw - w) / 2; y = padT; } else { x = padL + (cw - w) / 2; y = getHeight() - padB - h; }
+            c.save(); c.translate(x, y); d.setBounds(0, 0, w, h); d.draw(c); c.restore(); }
     }
     private void drawSpanned(java.awt.Graphics2D g, String piece, int off, Font f, float x, float y, int col) {
         AttributedString as = new AttributedString(piece); as.addAttribute(TextAttribute.FONT, f); as.addAttribute(TextAttribute.FOREGROUND, new java.awt.Color(col, true));
