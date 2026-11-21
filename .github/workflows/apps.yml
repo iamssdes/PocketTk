@@ -1,6 +1,6 @@
 # Builds the PocketTk window apps (Mac .dmg for Apple Silicon and Intel, Windows installer + zip, Linux .tar.gz for x86_64 and
 # aarch64), runs the tests, and attaches the files to a release.
-# Push a tag like v4.1.2 to make a release (v4.1.2-rc1 makes a pre-release); run it by hand (Actions > Desktop apps > Run workflow) to just get the files.
+# Push a tag like v4.1.0 to make a release (v4.1.0-rc1 makes a pre-release); run it by hand (Actions > Desktop apps > Run workflow) to just get the files.
 name: Desktop apps
 
 on:
@@ -111,7 +111,7 @@ jobs:
         with: { pattern: "PocketTk-*", merge-multiple: true, path: dist }
       - uses: softprops/action-gh-release@v2
         with:
-          prerelease: ${{ contains(github.ref_name, '-') }}      # v4.1.2-rc1 is a pre-release, v4.1.2 is not
+          prerelease: ${{ contains(github.ref_name, '-') }}      # v4.1.0-rc1 is a pre-release, v4.1.0 is not
           files: |
             dist/*.dmg
             dist/*.zip

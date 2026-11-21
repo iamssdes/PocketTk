@@ -1,4 +1,4 @@
-# PocketTk v4.1.2
+# PocketTk v4.1.0
 
 Turn a Python **tkinter** script into an installable Android APK (or, on a Mac, an iOS .ipa). Runs in Termux (rooted or not, as a KernelSU module or on its own), or on Windows, Linux and macOS.
 (Python is transpiled to Java, or to Swift for iOS; there is no embedded CPython.)
