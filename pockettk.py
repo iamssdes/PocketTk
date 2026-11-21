@@ -284,16 +284,31 @@ def dex_classes(t, classdir, outdir, rt_classes):
         die("no classes were produced")
     base = ["--release", "--min-api", "26", "--lib", t.ajar]
     tries = [["--classpath", rt_classes], []] if rt_classes else [[]]
+    inputs, jar = files, None
+    if sum(len(f) + 3 for f in files) > 4000:
+        # d8 is a .bat file on Windows and cmd.exe stops at about 8000 characters ("The command line is too long."): the
+        # runtime alone is hundreds of classes, so hand d8 one jar (a zip of the same class files) instead of every file
+        import zipfile
+        jar = os.path.normpath(classdir) + ".dex-input.jar"
+        root = os.path.normpath(classdir)
+        with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as z:
+            for f in files:
+                z.write(f, os.path.relpath(f, root).replace("\\", "/"))
+        inputs = [jar]
     last = None
-    for extra in tries:
-        if t.d8:
-            cmd = [t.d8] + base + extra + ["--output", outdir] + files
-        else:
-            cmd = [t.java, "-cp", t.d8jar, "com.android.tools.r8.D8"] + base + extra + ["--output", outdir] + files
-        p = run(cmd, check=False)
-        if p.returncode == 0:
-            return
-        last = (cmd, p.stdout)
+    try:
+        for extra in tries:
+            if t.d8:
+                cmd = [t.d8] + base + extra + ["--output", outdir] + inputs
+            else:
+                cmd = [t.java, "-cp", t.d8jar, "com.android.tools.r8.D8"] + base + extra + ["--output", outdir] + inputs
+            p = run(cmd, check=False)
+            if p.returncode == 0:
+                return
+            last = (cmd, p.stdout)
+    finally:
+        if jar and os.path.exists(jar):
+            os.remove(jar)
     sys.stdout.write(last[1])
     die("dexing failed: " + " ".join(last[0][:3]) + " ...")
 

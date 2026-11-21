@@ -133,8 +133,9 @@ class JdkLookup(unittest.TestCase):
         old = dict(os.environ)
         try:
             os.environ.pop("JAVA_HOME", None)
-            self.assertEqual(tk.export_java_home(), home)
-            self.assertTrue(os.environ["PATH"].startswith(os.path.join(home, "bin")))
+            real = os.path.realpath          # macOS: /var is /private/var; Windows: RUNNER~1 is runneradmin (same folder, other spelling)
+            self.assertEqual(real(tk.export_java_home()), real(home))
+            self.assertEqual(real(os.environ["PATH"].split(os.pathsep)[0]), real(os.path.join(home, "bin")))
         finally:
             os.environ.clear(); os.environ.update(old)
         shutil.rmtree(base, ignore_errors=True)
@@ -246,6 +247,57 @@ class Streaming(unittest.TestCase):
         ctl = FakeCtl(); code, out = deps.run_stream([s], ctl)
         self.assertEqual(code, 3); self.assertEqual(ctl.statuses, ["[===   ] 30% x", "[======] 100% x"]); self.assertEqual(ctl.lines, ["plain line"])
         shutil.rmtree(d, ignore_errors=True)
+
+
+
+
+class DexCommandLine(unittest.TestCase):
+    def test_many_classes_go_to_d8_in_one_jar(self):
+        """Windows CI: 'The command line is too long.' because d8.bat was given every .class file."""
+        d = tempfile.mkdtemp()
+        classdir = os.path.join(d, "classes")
+        for i in range(400):
+            p = os.path.join(classdir, "apple", "rt", "SomeLongClassName%03d.class" % i)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            open(p, "wb").close()
+        seen = []
+
+        class T:
+            d8, d8jar, java, ajar = "d8", "", "java", "android.jar"
+
+        def fake_run(cmd, log=None, check=True, **kw):
+            jars = [c for c in cmd if c.endswith(".jar") and os.path.exists(c)]
+            seen.append((cmd, zipfile.ZipFile(jars[0]).namelist() if jars else []))
+            return type("P", (), {"returncode": 0, "stdout": ""})()
+
+        orig = tk.run
+        tk.run = fake_run
+        try:
+            tk.dex_classes(T, classdir, os.path.join(d, "out"), None)
+        finally:
+            tk.run = orig
+        cmd, names = seen[0]
+        self.assertLess(len(" ".join(cmd)), 1000)
+        self.assertEqual(len(names), 400)
+        self.assertIn("apple/rt/SomeLongClassName000.class", names)
+        self.assertFalse(os.path.exists(classdir + ".dex-input.jar"), "the temporary jar is removed")
+
+    def test_few_classes_are_still_passed_directly(self):
+        d = tempfile.mkdtemp()
+        classdir = os.path.join(d, "classes")
+        os.makedirs(classdir)
+        open(os.path.join(classdir, "A.class"), "wb").close()
+        seen = []
+
+        class T:
+            d8, d8jar, java, ajar = "d8", "", "java", "android.jar"
+        orig = tk.run
+        tk.run = lambda cmd, log=None, check=True, **kw: (seen.append(cmd), type("P", (), {"returncode": 0, "stdout": ""})())[1]
+        try:
+            tk.dex_classes(T, classdir, os.path.join(d, "out"), None)
+        finally:
+            tk.run = orig
+        self.assertTrue(seen[0][-1].endswith("A.class"))
 
 
 if __name__ == "__main__":

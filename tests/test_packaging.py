@@ -47,6 +47,7 @@ class Packaging(unittest.TestCase):
         for f in ("packaging/macos/build_app.sh", "packaging/macos/Info.plist.in", ".github/workflows/apps.yml"):
             self.assertNotIn("palalgon", read(*f.split("/")))
 
+    @unittest.skipIf(os.name == "nt", "these are Linux/macOS scripts: the Linux and macOS jobs parse them (Windows' bash is WSL's launcher or needs LF files)")
     def test_shell_scripts_parse(self):
         for f in ("packaging/linux/build_app.sh", "packaging/linux/install.sh", "packaging/linux/AppRun", "packaging/macos/build_app.sh"):
             r = subprocess.run(["bash", "-n", os.path.join(HERE, f)], capture_output=True, text=True)
@@ -157,6 +158,7 @@ class CiFailuresStayFixed(unittest.TestCase):
         self.assertIn("@LIBS@", sh)
         self.assertNotIn("libasound2t64 libxkbcommon-x11-0 libxcb-cursor0 (", sh, "the hint must come from the list")
 
+    @unittest.skipIf(os.name == "nt", "runs a Linux script that uses ldd: the Linux and macOS jobs run it")
     def test_linux_hint_names_the_missing_library_from_ldd(self):
         sh = read("packaging", "linux", "build_app.sh")
         funcs = "\n".join(re.search(r"^%s\(\) \{.*?^\}" % n, sh, re.S | re.M).group(0) for n in ("deb_for", "qt_diagnose"))

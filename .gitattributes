@@ -1,0 +1,7 @@
+# Scripts that run on Linux, macOS or Android must stay LF, also when they are checked out on Windows.
+*.sh text eol=lf
+AppRun text eol=lf
+system/bin/* text eol=lf
+packaging/linux/* text eol=lf
+packaging/macos/*.sh text eol=lf
+.github/workflows/*.yml text eol=lf
