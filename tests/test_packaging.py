@@ -181,5 +181,12 @@ class CiFailuresStayFixed(unittest.TestCase):
         self.assertIn("libnope.so.1=\n", r.stdout + "\n")                    # unknown libraries map to nothing, no error
 
 
+class AndroidZipInRelease(unittest.TestCase):
+    def test_workflow_attaches_android_zip(self):
+        wf = read(".github/workflows/apps.yml")
+        self.assertIn("-android.zip", wf)
+        self.assertRegex(wf, r"needs: \[[^\]]*android[^\]]*\]")
+
+
 if __name__ == "__main__":
     unittest.main()

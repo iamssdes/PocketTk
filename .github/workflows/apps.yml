@@ -68,7 +68,7 @@ jobs:
         with:
           name: PocketTk-windows-x64-app
           path: |
-            dist/*.zip
+            dist/*.zip   # the Windows portable zip and PocketTk-<version>-android.zip
             dist/*-setup.exe
 
   linux:
@@ -102,9 +102,26 @@ jobs:
             dist/*.tar.gz
             dist/*.AppImage
 
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make PocketTk-<version>-android.zip (the KernelSU module and the unrooted Termux files)
+        run: |
+          v=$(sed -n 's/^version=v//p' module.prop)
+          mkdir -p dist
+          zip -qr "dist/PocketTk-$v-android.zip" . \
+            -x ".git/*" ".github/*" "tests/*" "packaging/*" "webui/*" "pockettk_gui.py" "pockettk.cmd" ".gitignore" "*/__pycache__/*" "dist/*"
+          unzip -l "dist/PocketTk-$v-android.zip" | tail -3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PocketTk-android
+          path: dist/*-android.zip
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [dmg, windows, linux]
+    needs: [dmg, windows, linux, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

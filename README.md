@@ -61,8 +61,7 @@ The same window on all three systems, and it is a terminal: a prompt with histor
 | Windows 10/11 (x64) | `PocketTk-<version>-windows-x64-setup.exe` or `...-windows-x64.zip` | run the installer (no admin rights), or unzip and open `PocketTk.cmd` |
 | Linux (x86_64, aarch64) | `PocketTk-<version>-linux-<arch>.AppImage` | one file: make it executable (file manager: Properties > Permissions > Allow executing) and double-click. No terminal |
 | Linux, as an archive | `PocketTk-<version>-linux-<arch>.tar.gz` | unpack, run `./install.sh` (menu entry) or `./pockettk-gui` |
-| Android (rooted, KernelSU) | Requires Termux. Flash your `PocketTk-<version>-android.zip` into KernelSU and it is set up, automatically. |
-| Android (unrooted) | Run `termux-setup-storage`, then `pkg install -y unzip`, then `cd ~`, `unzip -o ~/path/to/your/PocketTk-<version>-android.zip`, `cd PocketTk`, `sh termux_setup.sh`. |
+
 - **Everything it needs is installed by the app itself.** Each package carries its own Python and pywebview. On the first start the window downloads a Java JDK (Eclipse Temurin) and Google's Android build tools into `~/.pockettk` (`%USERPROFILE%\.pockettk` on Windows), after you accept Google's Android SDK license in the window. No administrator password, nothing outside that folder. `doctor` shows what is installed and `setup` repeats the install. (The SDK cannot be bundled: its license has to be accepted by you.)
 - **No terminal, no network port.** The page is shown in a native window (pywebview) and talks to the app through its built-in bridge; there is no local web server. Builds run as a child process of `pockettk.py build ...`, so the log is what the terminal would show, and Ctrl+C (or `cancel`) stops the whole build.
 - **Open the file chooser straight away:** `pockettk gui --pick`, or `pockettk gui app.py` to start with a file chosen. (The packages also contain a command line tool: `pockettk.cmd` on Windows, `./pockettk` on Linux.)
